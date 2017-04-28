@@ -248,6 +248,24 @@ regions = regions
 covmat = covmat[,colnames(covmat) %in% bws]
 ## reorder
 covmat = covmat[,bws]
+cm = log2(covmat+1)
+
+TCGA_inputdata=c()
+TCGA_inputdata$covmat <- cm
+TCGA_inputdata$regiondata <- predictor$regiondata
+
+  ov <- findOverlaps(predictor$regiondata,TCGA_inputdata$regiondata)
+  index_regions <- subjectHits(ov)
+  #reorder GRanges objects
+  TCGA_inputdata$regiondata <- TCGA_inputdata$regiondata[index_regions]
+  TCGA_inputdata$covmat <- TCGA_inputdata$covmat[index_regions,]
+
+TCGA_inputdata<-predict_pheno(inputdata_test= TCGA_inputdata, phenodata=pheno, phenotype="SMTS", covariates=NULL,type="factor", predictordata = predictor)
+length(predictions)
+predicted=predictions
+
+
+## but, to assess our accuracy, we can only do that where we know the tissue and it's in our predictor set
 #put data on a log2 scale
 dm = log2(covmat[,!is.na(md$xml_tumor_tissue_site)]+1)
 md2 = md[!is.na(md$xml_tumor_tissue_site),]
@@ -277,11 +295,11 @@ TCGA_inputdata$regiondata <- predictor$regiondata
 
   actual = as.character(tcga_meta2$xml_tumor_tissue_site)
   #define predicted
-  predicted = predictions
+  predicted_sub = predictions
 
   #summarize data
-	number_match <- sum(predicted==actual)
-	perc_correct = sum(predicted==actual)/length(actual)
+	number_match <- sum(predicted_sub==actual)
+	perc_correct = sum(predicted_sub==actual)/length(actual)
 	number_sites = nrow(predictor$coefEsts)
 
 	TCGA_summarized = c(number_sites,number_match, perc_correct)
@@ -291,7 +309,8 @@ TCGA_inputdata$regiondata <- predictor$regiondata
  TCGA_summarized
 
 #get output for package
-predictions_tcga = as.data.frame(cbind(tcga_meta2$gdc_file_id,"tcga",actual,predicted,perc_correct))
+actual = md$xml_tumor_tissue_site
+predictions_tcga = as.data.frame(cbind(md$gdc_file_id,"tcga",actual,predicted,perc_correct))
 
 ## How do we do in healthy controls
 ht <- tcga_meta2$cgc_sample_sample_type=="Solid Tissue Normal" & !(is.na(tcga_meta2$cgc_sample_sample_type))
@@ -341,6 +360,9 @@ SRA_inputdata=c()
 SRA_inputdata$covmat <- coverageMatrix
 SRA_inputdata$regiondata <- regions
 
+## make predictions
+predictions<-predict_pheno(inputdata_test= SRA_inputdata, phenodata=pheno, phenotype="SMTS", covariates=NULL,type="factor", predictordata = predictor)
+
 ## load SRA metadata
 ### Load in SRA metadata
 load('/dcl01/leek/data/recount-website/metadata/metadata_sra.Rdata')
@@ -364,15 +386,15 @@ SRA_inputdata$covmat <- SRA_inputdata$covmat[index_regions,]
 #log2 scale
 SRA_inputdata$covmat =  log2(SRA_inputdata$covmat +1)
 
-## make predictions
-predictions<-predict_pheno(inputdata_test= SRA_inputdata, phenodata=pheno, phenotype="SMTS", covariates=NULL,type="factor", predictordata = predictor)
+## make predictions in subset where we have something to compare to...
+predictions_sub<-predict_pheno(inputdata_test= SRA_inputdata, phenodata=pheno, phenotype="SMTS", covariates=NULL,type="factor", predictordata = predictor)
 # number of samples
-length(predictions)
+length(predictions_sub)
 
 ## test for accuracy
 actual_all = sra_meta$sharq_beta_tissue
 #define predicted
-predicted_all = predictions
+predicted_all = predictions_sub
 
 ## only include those in accuracy assesment for which we have predictions from sharq (NLP)
 keep = !is.na(sra_meta$sharq_beta_tissue) & sra_meta$sharq_beta_tissue %in% tolower(tiss)
