@@ -27,7 +27,7 @@ startTime <- Sys.time()
 # Load Data
 
 ```{r load-data, message=FALSE, warning = FALSE}
-load('/dcl01/leek/data/sellis/barcoding/output/PredictedPhenotypes_v0.0.03.rda')
+load('/dcl01/leek/data/sellis/barcoding/output/PredictedPhenotypes_v0.0.04.rda')
 
 df = PredictedPhenotypes
 
