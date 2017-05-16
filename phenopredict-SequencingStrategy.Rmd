@@ -190,6 +190,13 @@ perc_correct = as.numeric(sum(predicted==actual)/length(actual))
  #get output for package
 predictions_SequencingStrategy = data.frame(cbind(sra_meta_training$run,"sra",actual=as.character(actual),predicted=predicted,perc_correct))
 
+
+## how do predictions fare when sra_misreported_paired_end==TRUE
+set <- actual!=predicted
+mismatch = sra_meta_training$sra_misreported_paired_end[set]
+table(mismatch)
+#Proportion of samples with misreported paired end sequencing that are 'incorrect' predictions in SRA training data
+length(mismatch[mismatch==TRUE])/length(sra_meta_training$sra_misreported_paired_end[sra_meta_training$sra_misreported_paired_end==TRUE])
 ```
 
 # Extract data for SRA test set
@@ -248,7 +255,12 @@ predictions_SequencingStrategy_test = as.data.frame(cbind(sra_meta_test$run,"sra
 #update training set with test set perc_correct
 predictions_SequencingStrategy$perc_correct <- perc_correct
 
-
+## how do predictions fare when sra_misreported_paired_end==TRUE
+set <- actual!=predicted
+mismatch = sra_meta_test$sra_misreported_paired_end[set]
+table(mismatch)
+#Proportion of samples with misreported paired end sequencing that are 'incorrect' predictions in SRA training data
+length(mismatch[mismatch==TRUE])/length(sra_meta_test$sra_misreported_paired_end[sra_meta_test$sra_misreported_paired_end==TRUE])
 ```
 
 # Predict Sequnencing Strategy in TCGA
@@ -427,7 +439,7 @@ Code for creating the vignette
 ```{r createVignette, eval=FALSE}
 ## Create the vignette
 library('rmarkdown')
-system.time(render('/users/sellis/phenopredict/vignettes/phenopredict-SequencingStrategy.Rmd', 'BiocStyle::html_document'))
+system.time(render('/dcl01/leek/data/sellis/barcoding/phenotype_vignettes/phenopredict-SequencingStrategy.Rmd', 'BiocStyle::html_document'))
 
 ## Extract the R code
 library('knitr')
