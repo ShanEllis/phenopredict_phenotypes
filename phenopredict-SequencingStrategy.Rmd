@@ -268,63 +268,87 @@ length(mismatch[mismatch==TRUE])/length(sra_meta_test$sra_misreported_paired_end
 
 regions = predictor$regiondata
 
-## save as bedfile for region extraction in TCGA
-#compare to previous sex prediction
-# gr = predictor$regiondata
-# export.bed(gr, con="/dcl01/leek/data/sellis/barcoding/TCGA/TCGA_SequencingStrategy_v2.bed")
+if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_SeqStrat_inputdata.rda")) {
 
-## run scripts/run_bwtool_SequencingStrategy.sh to extract regions
-# system('sh /dcl01/leek/data/sellis/barcoding/scripts/run_bwtool_SequencingStrategy.sh tcga')
-# data are here: /dcl01/leek/data/sellis/barcoding/TCGA/bwtool_SequencingStrategy/coverage_tcga_SequencingStrategy
+  ## Extract same regions from TCGA data
+  load('/dcl01/lieber/ajaffe/lab/gtex_ers/rse_TCGA.Rdata')
+  findOverlaps(regions,rse) -> ov
+  ## extract regions from predictor
+  rse[subjectHits(ov)] -> rse_sub
+  ## get coverage matrix ; order same as in regions
+  ## note: these aren't scaled
+  cov_tcga <- assays(rse_sub)$counts
 
-## run check_tsv_tcga to check file and merge
-# qrsh -l mem_free=2G,h_vmem=3G -pe local 25
-# module load R/3.3.x
-# R CMD '/dcl01/leek/data/sellis/barcoding/scripts/check_tsv_tcga.R'
-
-load("/dcl01/leek/data/sellis/barcoding/data/regions_LibraryLayout_TCGA.rda")
-covmat = cov_tcga
-
-# get phenotype info in order
-recount::all_metadata('TCGA') -> md 
-bws = gsub('.bw','', md$bigwig_file)
+  # get phenotype info in order
+  recount::all_metadata('TCGA') -> md 
+  bws = gsub('.bw','', md$bigwig_file)
 
 
-#remove coverage samples for which we don't have metadata
-covmat = covmat[,colnames(covmat) %in% bws]
-## reorder
-covmat = covmat[,bws]
-#put data on a log2 scale
-dm = log2(covmat+1)
+  #ensure covmat is in same order as regions
+  if( identical(tolower(bws),colnames(cov_tcga))==TRUE){
+    covmat= cov_tcga
+    regions = regions
+
+    #remove coverage samples for which we don't have metadata
+    covmat = covmat[,colnames(covmat) %in% tolower(bws)]
+
+    #put data on a log2 scale
+    dm = log2(covmat+1)
+    md2 = md 
+  }else{
+    message("metadata and expression data not in same order")
+  }
+
+  tcga_meta2 = md2
 
 
-tcga_test_inputdata = list()
-tcga_test_inputdata$covmat <- dm
-tcga_test_inputdata$regiondata <- regions
+  TCGA_inputdata=c()
+  TCGA_inputdata$covmat <- dm
+  TCGA_inputdata$regiondata <- predictor$regiondata
 
-predictions_tcga<-predict_pheno(inputdata_test= tcga_test_inputdata, phenodata=sra_meta_training, phenotype=phenot, covariates=NULL,type="factor", predictordata = predictor)
-# number of samples
-length(predictions_tcga)
+    ov <- findOverlaps(predictor$regiondata,TCGA_inputdata$regiondata)
+    index_regions <- subjectHits(ov)
+    #reorder GRanges objects
+    TCGA_inputdata$regiondata <- TCGA_inputdata$regiondata[index_regions]
+    TCGA_inputdata$covmat <- TCGA_inputdata$covmat[index_regions,]
 
-#since we know the truth here, let's check and see how we're doing:
-  actual = rep("PAIRED",length(predictions_tcga))
+    save(TCGA_inputdata, tcga_meta2, file="/dcl01/leek/data/sellis/barcoding/data/TCGA_SeqStrat_inputdata.rda")
+}else{
+  load("/dcl01/leek/data/sellis/barcoding/data/TCGA_SeqStrat_inputdata.rda")
+}
 
+
+  predictions_tcga<-predict_pheno(inputdata_test= TCGA_inputdata, phenodata=sra_meta_training, phenotype=phenot, covariates=NULL,type="factor", predictordata = predictor)
+
+  # number of samples
+  length(predictions_tcga)
+
+  actual_all =  rep(c("PAIRED"),length(predictions_tcga))
+  ## remove NAs from actual
+  keep = !is.na(predictions_tcga)
+  actual = actual_all[keep]
   #define predicted
-  predicted = predictions_tcga
+  predicted = predictions_tcga[keep]
+
+
 
   #summarize data
-	number_match <- sum(predicted==actual)
-	perc_correct = sum(predicted==actual)/length(actual)
-	number_sites = nrow(predictor$coefEsts)
+  number_match <- sum(predicted==actual)
+  perc_correct = sum(predicted==actual)/length(actual)
+  number_sites = nrow(predictor$coefEsts)
 
-	summarized_tcga = cbind(number_sites,number_match, perc_correct)
-	colnames(summarized_tcga) <- c("sites_tested", "number_correct", "percent_correct")
+  TCGA_summarized = as.data.frame(cbind(number_sites,number_match, perc_correct))
+  names(TCGA_summarized) <- c("sites_tested", "number_correct", "percent_correct")
  
  #compare predictions to known sex
- summarized_tcga
+ TCGA_summarized
 
  #get output for package
-predictions_tcga = as.data.frame(cbind(md$gdc_file_id,"tcga",actual,predicted,perc_correct))
+predictions_tcga = as.data.frame(cbind(md$gdc_file_id,"tcga",actual=actual_all,predicted=predictions_tcga,perc_correct))
+
+summarized_tcga = cbind(number_sites,number_match, perc_correct)
+colnames(summarized_tcga) <- c("sites_tested", "number_correct", "percent_correct")
+
 ```
 
 # Predict Library Type in GTEx

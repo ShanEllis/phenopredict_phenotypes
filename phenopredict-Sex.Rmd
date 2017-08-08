@@ -21,6 +21,9 @@ library(devtools)
 document("/users/sellis/phenopredict")
 library('phenopredict')
 library(rtracklayer)
+library(recount)
+library('R.utils')
+library('BiocParallel')
 
 ## Set colors
 ## import colors to use
@@ -220,7 +223,6 @@ length(predictions)
 #get output for package
 predictions_gtex_test = as.data.frame(cbind(pheno2$Run,"gtex",actual=as.character(actual),predicted,perc_correct))
 predictions_gtex$perc_correct <- perc_correct
-
 ```
 
 
@@ -229,89 +231,67 @@ predictions_gtex$perc_correct <- perc_correct
 ```{r 'predict-sra', message = FALSE, warning = FALSE}
 regions = predictor$regiondata
 
-if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/regions_Sex_TCGA.rda")){
-    ## save as bedfile for region extraction in TCGA
-    # compare to previous sex prediction
-    # require(rtracklayer)
-    # gr = regions
-    # export.bed(gr, con="/dcl01/leek/data/sellis/barcoding/TCGA/TCGA_Sex_v2.bed")
+if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_Sex_inputdata.rda")) {
 
-    ## run scripts/run_bwtool_sex.sh to extract regions
-    system('sh /dcl01/leek/data/sellis/barcoding/scripts/run_bwtool_se.sh tcga', wait=TRUE)
+  ## Extract same regions from TCGA data
+  load('/dcl01/lieber/ajaffe/lab/gtex_ers/rse_TCGA.Rdata')
+  findOverlaps(regions,rse) -> ov
+  ## extract regions from predictor
+  rse[subjectHits(ov)] -> rse_sub
+  ## get coverage matrix ; order same as in regions
+  ## note: these aren't scaled
+  cov_tcga <- assays(rse_sub)$counts
 
-    #then run code check_tsv_tcga_sex.R or code below to get cov_tcga
-     library('R.utils')
-     library('BiocParallel')
+  # get phenotype info in order
+  recount::all_metadata('TCGA') -> md 
+  bws = gsub('.bw','', md$bigwig_file)
 
-    ## Parallel environment
-    # bp <- MulticoreParam(workers = 25, outfile = Sys.getenv('SGE_STDERR_PATH'))
-    tsv <- dir('/dcl01/leek/data/sellis/barcoding/TCGA/bwtool_Sex/coverage_tcga_Sex', pattern = 'tsv', full.names = TRUE)
-    names(tsv) <- gsub('.sum.tsv', '', dir('/dcl01/leek/data/sellis/barcoding/TCGA/bwtool_Sex/coverage_tcga_Sex', pattern = 'tsv'))
 
-    # system.time( tsv_lines <- bplapply(tsv, countLines, BPPARAM = bp) )
-    system.time( tsv_lines <- bplapply(tsv, countLines) )
-    all(tsv_lines == length(regions))
+  #ensure covmat is in same order as regions
+  if( identical(tolower(bws),colnames(cov_tcga) )==TRUE){
+    covmat= cov_tcga
+    regions = regions
 
-    ## after ensuring that all files are complete (and have the same number of extracted regions)
-    ## can merge them together
-    multmerge = function(mypath){
-      filenames=list.files(path=mypath, full.names=TRUE)
-      datalist = lapply(filenames, function(x){
-        read.table(file=x,header=F,sep='\t') 
-      })
-      Reduce(function(x,y) {cbind(x,y[,4])}, datalist)
-    }
+    #remove coverage samples for which we don't have metadata
+    covmat = covmat[,colnames(covmat) %in% tolower(bws)]
 
-    mymergeddata = multmerge('/dcl01/leek/data/sellis/barcoding/TCGA/bwtool_Sex/coverage_tcga_Sex')
+    #put data on a log2 scale
+    dm = log2(covmat[,!is.na(md$gdc_cases.demographic.gender)]+1)
+    md2 = md[!is.na(md$gdc_cases.demographic.gender),]
+  }else{
+    message("metadata and expression data not in same order")
+  }
 
-    filenames=list.files(path='/dcl01/leek/data/sellis/barcoding/TCGA/bwtool_Sex/coverage_tcga_Sex', full.names=FALSE)
-    filenames = gsub('.sum.tsv', '', filenames)
-    colnames(mymergeddata)[4:ncol(mymergeddata)] <- filenames
-    cov_tcga = mymergeddata
-    save(cov_tcga, file="/dcl01/leek/data/sellis/barcoding/data/regions_Sex_TCGA.rda")
+  tcga_meta2 = md2
+
+
+  TCGA_inputdata=c()
+  TCGA_inputdata$covmat <- dm
+  TCGA_inputdata$regiondata <- predictor$regiondata
+
+    ov <- findOverlaps(predictor$regiondata,TCGA_inputdata$regiondata)
+    index_regions <- subjectHits(ov)
+    #reorder GRanges objects
+    TCGA_inputdata$regiondata <- TCGA_inputdata$regiondata[index_regions]
+    TCGA_inputdata$covmat <- TCGA_inputdata$covmat[index_regions,]
+
+    save(TCGA_inputdata, tcga_meta2, file="/dcl01/leek/data/sellis/barcoding/data/TCGA_Sex_inputdata.rda")
 }else{
-  load("/dcl01/leek/data/sellis/barcoding/data/regions_Sex_TCGA.rda")
+  load("/dcl01/leek/data/sellis/barcoding/data/TCGA_Sex_inputdata.rda")
 }
-
-covmat = cov_tcga
-# get phenotype info in order
-recount::all_metadata('TCGA') -> md 
-bws = gsub('.bw','', md$bigwig_file)
-
-
-#remove coverage samples for which we don't have metadata
-covmat = covmat[,colnames(covmat) %in% bws]
-## reorder
-covmat = covmat[,bws]
-#put data on a log2 scale
-dm = log2(covmat[,!is.na(md$gdc_cases.demographic.gender)]+1)
-md2 = md[!is.na(md$gdc_cases.demographic.gender),]
-
-
-#covmat is in same order as regions
-# covmat= cov_tcga[,4:ncol(cov_tcga)]
-# regions = regions
-
-TCGA_inputdata=c()
-TCGA_inputdata$covmat <- covmat
-TCGA_inputdata$regiondata <- predictor$regiondata
-
-  ov <- findOverlaps(predictor$regiondata,TCGA_inputdata$regiondata)
-  index_regions <- subjectHits(ov)
-  #reorder GRanges objects
-  TCGA_inputdata$regiondata <- TCGA_inputdata$regiondata[index_regions]
-  TCGA_inputdata$covmat <- TCGA_inputdata$covmat[index_regions,]
-
 
   predictions<-predict_pheno(inputdata_test= TCGA_inputdata, phenodata=pheno, phenotype="Sex", covariates=NULL,type="factor", predictordata = predictor)
   # number of samples
   length(predictions)
 
-  actual_all = as.character(md$gdc_cases.demographic.gender)
-  keep = !is.na(actual_all)
+  actual_all = as.character(md2$gdc_cases.demographic.gender)
+  ## remove NAs from actual
+  keep = !is.na(predicted)
   actual = actual_all[keep]
   #define predicted
   predicted = predictions[keep]
+
+
 
   #summarize data
   number_match <- sum(predicted==actual)
@@ -326,10 +306,9 @@ TCGA_inputdata$regiondata <- predictor$regiondata
 
  #get output for package
 predictions_tcga = as.data.frame(cbind(md$gdc_file_id,"tcga",actual=actual_all,predicted=predictions,perc_correct))
-
 ```
 
-# Extract SRA data
+
 
 ```{r 'extract-sra-data', message = FALSE, warning = FALSE}
 library(GenomicRanges)
@@ -542,11 +521,11 @@ Code for creating the vignette
 ```{r createVignette, eval=FALSE}
 ## Create the vignette
 library('rmarkdown')
-system.time(render('/users/sellis/phenopredict/vignettes/phenopredict-Sex.Rmd', 'BiocStyle::html_document'))
+system.time(render('/dcl01/leek/data/sellis/barcoding/phenotype_vignettes/phenopredict-Sex.Rmd', 'BiocStyle::html_document'))
 
 ## Extract the R code
 library('knitr')
-knit('/users/sellis/phenopredict/vignettes/phenopredict-Sex.Rmd', tangle = TRUE)
+knit('/dcl01/leek/data/sellis/barcoding/phenotype_vignettes/phenopredict-Sex.Rmd', tangle = TRUE)
 ```
 
 

@@ -394,95 +394,95 @@ length(predictions)
   	perc_correct = NA
 
   
-predictions_sra_train_nopheno = as.data.frame(cbind(sra_meta_nopheno$run,"sra",actual=actual,predicted=predicted,perc_correct))
+predictions_sra_train_nopheno = as.data.frame(cbind(sra_meta_nopheno_NAs$run,"sra",actual=actual,predicted=predicted,perc_correct))
 ```
 
-# Predict Sample Source in TCGA
+# Predict Sequnencing Strategy in TCGA
 ```{r 'predict-phenotype-tcga', message = FALSE, warning = FALSE}
 
 regions = predictor$regiondata
 
-if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/regions_CellLine_TCGA.rda")) {
+if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_SampSource_inputdata.rda")) {
 
-	## save as bedfile for region extraction in TCGA
-	#compare to previous sex prediction
-	# gr = predictor$regiondata
-	# export.bed(gr, con="/dcl01/leek/data/sellis/barcoding/TCGA/TCGA_CellLine_v2.bed")
+  ## Extract same regions from TCGA data
+  load('/dcl01/lieber/ajaffe/lab/gtex_ers/rse_TCGA.Rdata')
+  findOverlaps(regions,rse) -> ov
+  ## extract regions from predictor
+  rse[subjectHits(ov)] -> rse_sub
+  ## get coverage matrix ; order same as in regions
+  ## note: these aren't scaled
+  cov_tcga <- assays(rse_sub)$counts
 
-	## run scripts/run_bwtool_CellLine.sh to extract regions
-	setwd('/dcl01/leek/data/sellis/barcoding/SRA/bwtool')
-	system('sh /dcl01/leek/data/sellis/barcoding/scripts/run_bwtool_CellLine.sh tcga')
-	# data are here: /dcl01/leek/data/sellis/barcoding/TCGA/bwtool_CellLine/coverage_tcga_CellLine
-
-	## check files and merge
+  # get phenotype info in order
+  recount::all_metadata('TCGA') -> md 
+  bws = gsub('.bw','', md$bigwig_file)
 
 
-	## Parallel environment
-	tsv <- dir('/dcl01/leek/data/sellis/barcoding/TCGA/bwtool_CellLine/coverage_tcga_CellLine', pattern = 'tsv', full.names = TRUE)
-	names(tsv) <- gsub('.sum.tsv', '', dir('/dcl01/leek/data/sellis/barcoding/TCGA/bwtool/coverage_tcga_CellLine', pattern = 'tsv'))
-	system.time( tsv_lines <- bplapply(tsv, countLines))
-	all(tsv_lines == length(regions))
+  #ensure covmat is in same order as regions
+  if( identical(tolower(bws),colnames(cov_tcga))==TRUE){
+    covmat= cov_tcga
+    regions = regions
 
-	multmerge = function(mypath){
-		filenames=list.files(path=mypath, full.names=TRUE)
-		datalist = lapply(filenames, function(x){
-			read.table(file=x,header=F,sep='\t') 
-		})
-		Reduce(function(x,y) {cbind(x,y[,4])}, datalist)
-	}
+    #remove coverage samples for which we don't have metadata
+    covmat = covmat[,colnames(covmat) %in% tolower(bws)]
 
-	mymergeddata = multmerge('/dcl01/leek/data/sellis/barcoding/TCGA/bwtool_CellLine/coverage_tcga_CellLine')
-	filenames=list.files(path='/dcl01/leek/data/sellis/barcoding/TCGA/bwtool_CellLine/coverage_tcga_CellLine', full.names=FALSE)
+    #put data on a log2 scale
+    dm = log2(covmat+1)
+    md2 = md 
+  }else{
+    message("metadata and expression data not in same order")
+  }
 
-	filenames = gsub('.sum.tsv', '', filenames)
-	colnames(mymergeddata)[4:ncol(mymergeddata)] <- filenames
+  tcga_meta2 = md2
 
-	cov_tcga = mymergeddata
-	save(cov_tcga, file="/dcl01/leek/data/sellis/barcoding/data/regions_CellLine_TCGA.rda")
-}else{	
-	load("/dcl01/leek/data/sellis/barcoding/data/regions_CellLine_TCGA.rda")
+
+  TCGA_inputdata=c()
+  TCGA_inputdata$covmat <- dm
+  TCGA_inputdata$regiondata <- predictor$regiondata
+
+    ov <- findOverlaps(predictor$regiondata,TCGA_inputdata$regiondata)
+    index_regions <- subjectHits(ov)
+    #reorder GRanges objects
+    TCGA_inputdata$regiondata <- TCGA_inputdata$regiondata[index_regions]
+    TCGA_inputdata$covmat <- TCGA_inputdata$covmat[index_regions,]
+
+    save(TCGA_inputdata, tcga_meta2, file="/dcl01/leek/data/sellis/barcoding/data/TCGA_SampSource_inputdata.rda")
+}else{
+  load("/dcl01/leek/data/sellis/barcoding/data/TCGA_SampSource_inputdata.rda")
 }
-covmat = cov_tcga
-
-# get phenotype info in order
-recount::all_metadata('TCGA') -> md 
-bws = gsub('.bw','', md$bigwig_file)
 
 
-#remove coverage samples for which we don't have metadata
-covmat = covmat[,colnames(covmat) %in% bws]
-## reorder
-covmat = covmat[,bws]
-#put data on a log2 scale
-dm = log2(covmat+1)
+  predictions_tcga<-predict_pheno(inputdata_test= TCGA_inputdata, phenodata=sra_meta_training, phenotype=phenot, covariates=NULL,type="factor", predictordata = predictor)
 
-tcga_test_inputdata = list()
-tcga_test_inputdata$covmat <- dm
-tcga_test_inputdata$regiondata <- regions
+  # number of samples
+  length(predictions_tcga)
 
-predictions_tcga<-predict_pheno(inputdata_test= tcga_test_inputdata, phenodata=sra_meta_training, phenotype=phenot, covariates=NULL,type="factor", predictordata = predictor)
-# number of samples
-length(predictions_tcga)
-
-#since we know the truth here, let's check and see how we're doing:
-  actual = rep("tissue",length(predictions_tcga))
-
+  actual_all =  rep(c("tissue"),length(predictions_tcga))
+  ## remove NAs from actual
+  keep = !is.na(predictions_tcga)
+  actual = actual_all[keep]
   #define predicted
-  predicted = predictions_tcga
+  predicted = predictions_tcga[keep]
+
+
 
   #summarize data
-	number_match <- sum(predicted==actual)
-	perc_correct = sum(predicted==actual)/length(actual)
-	number_ssites = nrow(predictor$coefEsts)
+  number_match <- sum(predicted==actual)
+  perc_correct = sum(predicted==actual)/length(actual)
+  number_sites = nrow(predictor$coefEsts)
 
-	summarized_tcga = cbind(number_sites,number_match, perc_correct)
-	colnames(summarized_tcga) <- c("sites_tested", "number_correct", "percent_correct")
+  TCGA_summarized = as.data.frame(cbind(number_sites,number_match, perc_correct))
+  names(TCGA_summarized) <- c("sites_tested", "number_correct", "percent_correct")
  
  #compare predictions to known sex
- summarized_tcga
+ TCGA_summarized
 
-#get output for package
-predictions_tcga = as.data.frame(cbind(md$gdc_file_id,"tcga",actual,predicted,perc_correct))
+ #get output for package
+predictions_tcga = as.data.frame(cbind(md$gdc_file_id,"tcga",actual=actual_all,predicted=predictions_tcga,perc_correct))
+
+summarized_tcga = cbind(number_sites,number_match, perc_correct)
+colnames(summarized_tcga) <- c("sites_tested", "number_correct", "percent_correct")
+
 ```
 
 # Predict Sample Source in GTEx
@@ -631,11 +631,11 @@ Code for creating the vignette
 ```{r createVignette, eval=FALSE}
 ## Create the vignette
 library('rmarkdown')
-system.time(render('/users/sellis/phenopredict/vignettes/phenopredict-SampleSource.Rmd', 'BiocStyle::html_document'))
+system.time(render('/dcl01/leek/data/sellis/barcoding/phenotype_vignettes/phenopredict-SampleSource.Rmd', 'BiocStyle::html_document'))
 
 ## Extract the R code
 library('knitr')
-knit('/users/sellis/phenopredict/vignettes/phenopredict-SampleSource.Rmd', tangle = TRUE)
+knit('/dcl01/leek/data/sellis/barcoding/phenotype_vignettes/phenopredict-SampleSource.Rmd', tangle = TRUE)
 ```
 
 

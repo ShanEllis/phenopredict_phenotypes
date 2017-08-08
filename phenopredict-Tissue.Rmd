@@ -51,7 +51,7 @@ pheno = pheno[sample_individuals,]
 
 # prepare expression data
 if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/merge_input_SMTS_nocovars.rda")){
-	source("/dcs01/ajaffe/GTEX/Leek/coverageMatrix/simpleLoad/gtexLoad.R")
+	source("/dcl01/leek/data/sellis/barcoding/scripts/gtexLoad.R")
 	chrs = c("X","Y",1:22)
 	for(i in 1:length(chrs)){
 	  chrname=paste0("chr",chrs[i])
@@ -62,7 +62,6 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/merge_input_SMTS_nocovar
 	  cm = log2(cm + 1)
 	  wid = width(dat$regions)
 
-	  pheno = pheno[usegtex,]
 	  cm = cm[, usegtex]
 	  cm_all=cm[wid>20,]
 	  regiondata = regiondata[wid>20]
@@ -93,7 +92,7 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/merge_input_SMTS_nocovar
 ```{r 'merge-inputdata', message = FALSE, warning = FALSE}
 if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/merge_input_SMTS_nocovars.rda")) {
 	# test = as.list(file.list)
-	# file.list.inputdata <- grep("inputdata_chr",ls(),val=T)
+	file.list.inputdata <- grep("inputdata_chr",ls(),val=T)
 	# test<- merge_input(inputdata_list=list(do.call(get(file.list.inputdata))))
 
 	merge_input<- merge_input(inputdata_list=list(inputdata_chr1, inputdata_chr2, inputdata_chr3, inputdata_chr4, inputdata_chr5, inputdata_chr6, inputdata_chr7, inputdata_chr8, inputdata_chr9, inputdata_chr10, inputdata_chr11, inputdata_chr12, inputdata_chr13, inputdata_chr14, inputdata_chr15, inputdata_chr16, inputdata_chr17, inputdata_chr18, inputdata_chr19, inputdata_chr20, inputdata_chr21, inputdata_chr22, inputdata_chrX, inputdata_chrY) )
@@ -129,8 +128,8 @@ dim(predictor$coefEsts)
 # Test predictor
 
 ```{r 'test-predictor', message = FALSE, warning = FALSE}
-predictions_test <-test_predictor(inputdata=merge_input ,phenodata=pheno, phenotype="SMTS", 
-    covariates=NULL,type="factor",predictordata=predictor )
+
+predictions_test <-test_predictor(inputdata=merge_input ,phenodata=pheno, phenotype="SMTS",covariates=NULL,type="factor",predictordata=predictor )
 # number of samples
 length(predictions_test$predicted)
 
@@ -213,104 +212,89 @@ predictions_gtex$perc_correct <- perc_correct
 # Predict Tissue in TCGA
 
 ```{r 'TCGA', message = FALSE, warning = FALSE}
+
 #extract names of possible tissues predicted
 tiss = names(table(actual))
-regions = predictor$regiondata
 tissNA = c(tiss, NA)
+
 
 ## save as bedfile for region extraction in TCGA
 #compare to previous sex prediction
 # gr = regions
 # export.bed(gr, con="/dcl01/leek/data/sellis/barcoding/TCGA/TCGA_Tissue_v2.bed")
 
-## run scripts/run_bwtool_se.sh to extract regions
-if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/regions_SMTS_TCGA.rda")) {
-	setwd('/dcl01/leek/data/sellis/barcoding/SRA/bwtool')
-	system('sh /dcl01/leek/data/sellis/barcoding/scripts/run_bwtool_se.sh tcga')
+if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_Tissue_inputdata.rda")) {
 
-	## run check_tsv_tcga to check file and merge
-	# qrsh -l mem_free=2G,h_vmem=3G -pe local 25
-	# module load R/3.3.x
-	# R CMD '/dcl01/leek/data/sellis/barcoding/scripts/check_tsv_tcga_tissue.R'
+	## Extract same regions from TCGA data
+	regions = predictor$regiondata
+	load('/dcl01/lieber/ajaffe/lab/gtex_ers/rse_TCGA.Rdata')
+	findOverlaps(regions,rse) -> ov
+	## extract regions from predictor
+	rse[subjectHits(ov)] -> rse_sub
+	## get coverage matrix ; order same as in regions
+	## note: these aren't scaled
+	cov_tcga <- assays(rse_sub)$counts
+
+	# get phenotype info in order
+	recount::all_metadata('TCGA') -> md 
+	bws = gsub('.bw','', md$bigwig_file)
+
+
+	#ensure covmat is in same order as regions
+	if( identical(tolower(bws),colnames(cov_tcga) )==TRUE){
+		covmat= cov_tcga
+		regions = regions
+
+		#remove coverage samples for which we don't have metadata
+		covmat = covmat[,colnames(covmat) %in% tolower(bws)]
+
+		#put data on a log2 scale
+		dm = log2(covmat[,!is.na(md$xml_tumor_tissue_site)]+1)
+		md2 = md[!is.na(md$xml_tumor_tissue_site),]
+	}
+	## only include samples with tissues included in GTEx
+	### Keep only the good SRA
+	tiss_in_gtex = md2$xml_tumor_tissue_site %in% tiss
+	tcgaGene = dm[,tiss_in_gtex]
+	tcga_meta2 = md2[tiss_in_gtex,]
+
+
+	TCGA_inputdata=c()
+	TCGA_inputdata$covmat <- tcgaGene
+	TCGA_inputdata$regiondata <- predictor$regiondata
+
+	  ov <- findOverlaps(predictor$regiondata,TCGA_inputdata$regiondata)
+	  index_regions <- subjectHits(ov)
+	  #reorder GRanges objects
+	  TCGA_inputdata$regiondata <- TCGA_inputdata$regiondata[index_regions]
+	  TCGA_inputdata$covmat <- TCGA_inputdata$covmat[index_regions,]
+
+	  save(TCGA_inputdata, tcga_meta2, file="/dcl01/leek/data/sellis/barcoding/data/TCGA_Tissue_inputdata.rda")
 }else{
-	load("/dcl01/leek/data/sellis/barcoding/data/regions_SMTS_TCGA.rda")
+	load("/dcl01/leek/data/sellis/barcoding/data/TCGA_Tissue_inputdata.rda")
 }
-# get phenotype info in order
-recount::all_metadata('TCGA') -> md 
-bws = gsub('.bw','', md$bigwig_file)
 
-
-#covmat is in same order as regions
-covmat= cov_tcga[,4:ncol(cov_tcga)]
-regions = regions
-
-#remove coverage samples for which we don't have metadata
-covmat = covmat[,colnames(covmat) %in% bws]
-## reorder
-covmat = covmat[,bws]
-cm = log2(covmat+1)
-
-TCGA_inputdata=c()
-TCGA_inputdata$covmat <- cm
-TCGA_inputdata$regiondata <- predictor$regiondata
-
-  ov <- findOverlaps(predictor$regiondata,TCGA_inputdata$regiondata)
-  index_regions <- subjectHits(ov)
-  #reorder GRanges objects
-  TCGA_inputdata$regiondata <- TCGA_inputdata$regiondata[index_regions]
-  TCGA_inputdata$covmat <- TCGA_inputdata$covmat[index_regions,]
-
-TCGA_inputdata<-predict_pheno(inputdata_test= TCGA_inputdata, phenodata=pheno, phenotype="SMTS", covariates=NULL,type="factor", predictordata = predictor)
+predictions<-predict_pheno(inputdata_test= TCGA_inputdata, phenodata=pheno, phenotype="SMTS", covariates=NULL,type="factor", predictordata = predictor)
+# number of samples
 length(predictions)
-predicted=predictions
 
+actual = as.character(tcga_meta2$xml_tumor_tissue_site)
+#define predicted
+predicted = predictions
 
-## but, to assess our accuracy, we can only do that where we know the tissue and it's in our predictor set
-#put data on a log2 scale
-dm = log2(covmat[,!is.na(md$xml_tumor_tissue_site)]+1)
-md2 = md[!is.na(md$xml_tumor_tissue_site),]
+#summarize data
+number_match <- sum(predicted==actual)
+perc_correct = sum(predicted==actual)/length(actual)
+number_sites = nrow(predictor$coefEsts)
 
-## only include samples with tissues included in GTEx
-### Keep only the good SRA
-
-tiss_in_gtex = md2$xml_tumor_tissue_site %in% tiss
-tcgaGene = dm[,tiss_in_gtex]
-tcga_meta2 = md2[tiss_in_gtex,]
-
-
-TCGA_inputdata=c()
-TCGA_inputdata$covmat <- tcgaGene
-TCGA_inputdata$regiondata <- predictor$regiondata
-
-  ov <- findOverlaps(predictor$regiondata,TCGA_inputdata$regiondata)
-  index_regions <- subjectHits(ov)
-  #reorder GRanges objects
-  TCGA_inputdata$regiondata <- TCGA_inputdata$regiondata[index_regions]
-  TCGA_inputdata$covmat <- TCGA_inputdata$covmat[index_regions,]
-
-
-  predictions<-predict_pheno(inputdata_test= TCGA_inputdata, phenodata=pheno, phenotype="SMTS", covariates=NULL,type="factor", predictordata = predictor)
-	# number of samples
-	length(predictions)
-
-  actual = as.character(tcga_meta2$xml_tumor_tissue_site)
-  #define predicted
-  predicted_sub = predictions
-
-  #summarize data
-	number_match <- sum(predicted_sub==actual)
-	perc_correct = sum(predicted_sub==actual)/length(actual)
-	number_sites = nrow(predictor$coefEsts)
-
-	TCGA_summarized = c(number_sites,number_match, perc_correct)
-	names(TCGA_summarized) <- c("sites_tested", "number_correct", "percent_correct")
+TCGA_summarized = c(number_sites,number_match, perc_correct)
+names(TCGA_summarized) <- c("sites_tested", "number_correct", "percent_correct")
  
  #compare predictions to known sex
  TCGA_summarized
 
 #get output for package
-actual = md$xml_tumor_tissue_site
-predictions_tcga = as.data.frame(cbind(md$gdc_file_id,"tcga",actual,predicted,perc_correct))
+predictions_tcga = as.data.frame(cbind(tcga_meta2$gdc_file_id,"tcga",actual,predicted,perc_correct))
 
 ## How do we do in healthy controls
 ht <- tcga_meta2$cgc_sample_sample_type=="Solid Tissue Normal" & !(is.na(tcga_meta2$cgc_sample_sample_type))
@@ -347,21 +331,90 @@ perc_correct_ht
 ## load SRA metadata
 
 ## extract regions from SRA data
-if(!file.exists('/dcl01/leek/data/sellis/barcoding/data/covmat_SRA_SMTS.Rdata')) {
-	source('/dcl01/leek/data/sellis/barcoding/scripts/SRA_SMTSregions.R')
-	load('/dcl01/leek/data/sellis/barcoding/data/covmat_SRA_SMTS.Rdata')
-	load('/dcl01/leek/data/sellis/barcoding/data/minfi_rda/regions_SRA_SMTS.Rdata')
+if(!file.exists('/dcl01/leek/data/sellis/barcoding/data/SRA_inputdata_Tissue.Rdata')) {
+  #### SRA data [generated in merge_bwtool_by_chunk.R]
+  ## which chunk regions are in [chunk_grp]
+  load('/dcl01/leek/data/sellis/barcoding/data/chunk_grp.Rdata')
+  ## region information [regions]
+  load('/dcl01/leek/data/sellis/barcoding/data/regions-cut0.5.Rdata')
+  reg = regions
+  rm(regions)
+  ## add chunk information to all 1,187,643 regions
+  reg$chunkname <- chunk_grp
+
+  ## GTEx regions to subset
+  regions_to_subset = predictor$regiondata
+
+  ## get regions overlap [b/w all quantified regions and GTEx subset]
+  ov <- findOverlaps(reg,regions_to_subset)
+  ## Integer vector to re-order regions to https://github.com/jtleek/sra-gtex/blob/master/select-gtex-ers.R#L80-L88
+  index_regions <- subjectHits(ov)
+  index_regions_query <- queryHits(ov)
+  #reorder GRanges objects
+  reg <- reg[index_regions_query,]
+  regions_to_subset <- regions_to_subset[index_regions,]
+
+  regions_split <- split(reg, reg$chunkname)
+
+
+  ## load the coverageMatrix of interest from the appropriate "chunk"
+
+  # dir.create('data/coverageMatrix_subset', showWarnings = FALSE)
+
+  xx <- mapply(function(regs, chunk_name) {
+      message(paste(Sys.time(), 'processing', chunk_name))
+      
+      ## Load coverage matrix for each chunk [coverageMatrix]
+      load(paste0('/dcl01/leek/data/gtex_work/runs/sra/DER_analysis/coverageMatrix/ers_gtex/coverageMatrix-cut0.5-', chunk_name, '.Rdata'))
+
+      ## Load regions included in the chunk [regions_subset]
+     load( paste0('/dcl01/leek/data/gtex_work/runs/sra/DER_analysis/coverageMatrix/ers_gtex/regions_', chunk_name, '-cut0.5.Rdata'))
+
+      ## Identify which regions to keep
+      regions_keep <- which(countOverlaps( regions_subset,regions_to_subset) > 0)
+      stopifnot(length(regions_keep) == length(regs))
+      
+      ## Save actual subset of regions used
+      regions_subset <- regions_subset[regions_keep]
+      save(regions_subset, file = paste0('/dcl01/leek/data/sellis/barcoding/data/minfi_rda/regions_', chunk_name, '-cut0.5.Rdata'))
+      
+      ## Compute chunk coverage matrix
+      coverageMatrix_subset <- coverageMatrix[regions_keep,]
+      save(coverageMatrix_subset, file = paste0('/dcl01/leek/data/sellis/barcoding/data/minfi_rda/coverageMatrix-cut0.5-', chunk_name,
+          '.Rdata'))
+      
+      ## Finish
+      return(invisible(NULL))
+  }, regions_split, names(table(reg$chunkname)))
+
+  ## compile the subset of regions into a single object
+  chunks <-names(table(reg$chunkname))
+  coverageMatrix=c()
+  regions = GRanges()
+
+  for (i in 1:length(chunks)){
+        message(paste(Sys.time(), 'processing', chunks[i]))
+
+    ## load in each chunk and save to a data frame
+    load(paste0('/dcl01/leek/data/sellis/barcoding/data/minfi_rda/coverageMatrix-cut0.5-', chunks[i],
+          '.Rdata'))
+    coverageMatrix = rbind(coverageMatrix, coverageMatrix_subset)
+
+    ## load in and combine region data
+    load(paste0('/dcl01/leek/data/sellis/barcoding/data/minfi_rda/regions_', chunks[i], '-cut0.5.Rdata'))
+    regions = append(regions,regions_subset)
+  } 
+  	
+  	sra_inputdata=list()
+	sra_inputdata$covmat <- coverageMatrix
+	sra_inputdata$regiondata <- regions
+
+  save(sra_inputdata,file='/dcl01/leek/data/sellis/barcoding/data/SRA_inputdata_Tissue.Rdata')
 }else{
-	load('/dcl01/leek/data/sellis/barcoding/data/covmat_SRA_SMTS.Rdata')
-	load('/dcl01/leek/data/sellis/barcoding/data/minfi_rda/regions_SRA_SMTS.Rdata')
+  	load('/dcl01/leek/data/sellis/barcoding/data/SRA_inputdata_Tissue.Rdata')
 }
 
-SRA_inputdata=c()
-SRA_inputdata$covmat <- coverageMatrix
-SRA_inputdata$regiondata <- regions
 
-## make predictions
-predictions<-predict_pheno(inputdata_test= SRA_inputdata, phenodata=pheno, phenotype="SMTS", covariates=NULL,type="factor", predictordata = predictor)
 
 ## load SRA metadata
 ### Load in SRA metadata
@@ -372,6 +425,8 @@ rm(metadata)
 
 
 ### Keep only the good SRA and get them in the same order
+SRA_inputdata = sra_inputdata
+
 mm = match(colnames(SRA_inputdata$covmat),sra_meta$run)
 sra_meta = sra_meta[mm,]
 pd = read_csv("https://raw.githubusercontent.com/nellore/runs/master/sra/v2/hg38/SraRunInfo.csv")
@@ -386,15 +441,15 @@ SRA_inputdata$covmat <- SRA_inputdata$covmat[index_regions,]
 #log2 scale
 SRA_inputdata$covmat =  log2(SRA_inputdata$covmat +1)
 
-## make predictions in subset where we have something to compare to...
-predictions_sub<-predict_pheno(inputdata_test= SRA_inputdata, phenodata=pheno, phenotype="SMTS", covariates=NULL,type="factor", predictordata = predictor)
+## make predictions
+predictions<-predict_pheno(inputdata_test= SRA_inputdata, phenodata=pheno, phenotype="SMTS", covariates=NULL,type="factor", predictordata = predictor)
 # number of samples
-length(predictions_sub)
+length(predictions)
 
 ## test for accuracy
 actual_all = sra_meta$sharq_beta_tissue
 #define predicted
-predicted_all = predictions_sub
+predicted_all = predictions
 
 ## only include those in accuracy assesment for which we have predictions from sharq (NLP)
 keep = !is.na(sra_meta$sharq_beta_tissue) & sra_meta$sharq_beta_tissue %in% tolower(tiss)
@@ -501,11 +556,11 @@ Code for creating the vignette
 ```{r createVignette, eval=FALSE}
 ## Create the vignette
 library('rmarkdown')
-system.time(render('/users/sellis/phenopredict/vignettes/phenopredict-Tissue.Rmd', 'BiocStyle::html_document'))
+system.time(render('/dcl01/leek/data/sellis/barcoding/phenotype_vignettes/phenopredict-Tissue.Rmd', 'BiocStyle::html_document'))
 
 ## Extract the R code
 library('knitr')
-knit('/users/sellis/phenopredict/vignettes/phenopredict-Tissue.Rmd', tangle = TRUE)
+knit('/dcl01/leek/data/sellis/barcoding/phenotype_vignettes/phenopredict_predictions/phenopredict-Tissue.Rmd', tangle = TRUE)
 ```
 
 

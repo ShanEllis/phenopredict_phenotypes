@@ -120,6 +120,7 @@ ggplot(data = test, aes(x=dataset, y = Count,label = Count)) +
     theme(legend.title=element_blank(),plot.title = element_text(hjust = 0.5),text = element_text(size=20), panel.border = element_blank(), panel.grid.major = element_blank(),
 		panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text=element_text(colour="black"),axis.text.x=element_blank(), axis.ticks.x=element_blank())
 
+
 ```
 
 
