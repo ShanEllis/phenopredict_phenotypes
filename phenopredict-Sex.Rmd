@@ -231,6 +231,11 @@ predictions_gtex$perc_correct <- perc_correct
 ```{r 'predict-sra', message = FALSE, warning = FALSE}
 regions = predictor$regiondata
 
+# get phenotype info in order
+recount::all_metadata('TCGA') -> md 
+bws = gsub('.bw','', md$bigwig_file)
+md2 = md[!is.na(md$gdc_cases.demographic.gender),]
+
 if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_Sex_inputdata.rda")) {
 
   ## Extract same regions from TCGA data
@@ -242,9 +247,7 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_Sex_inputdata.rda")
   ## note: these aren't scaled
   cov_tcga <- assays(rse_sub)$counts
 
-  # get phenotype info in order
-  recount::all_metadata('TCGA') -> md 
-  bws = gsub('.bw','', md$bigwig_file)
+  
 
 
   #ensure covmat is in same order as regions
@@ -257,13 +260,11 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_Sex_inputdata.rda")
 
     #put data on a log2 scale
     dm = log2(covmat[,!is.na(md$gdc_cases.demographic.gender)]+1)
-    md2 = md[!is.na(md$gdc_cases.demographic.gender),]
   }else{
     message("metadata and expression data not in same order")
   }
 
   tcga_meta2 = md2
-
 
   TCGA_inputdata=c()
   TCGA_inputdata$covmat <- dm
@@ -283,6 +284,7 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_Sex_inputdata.rda")
   predictions<-predict_pheno(inputdata_test= TCGA_inputdata, phenodata=pheno, phenotype="Sex", covariates=NULL,type="factor", predictordata = predictor)
   # number of samples
   length(predictions)
+
 
   actual_all = as.character(md2$gdc_cases.demographic.gender)
   ## remove NAs from actual
@@ -472,7 +474,7 @@ colours2 = c(bright["purple"],bright["purple"],bright["pink"],bright["teal"])
  # pdf("/dcl01/leek/data/sellis/barcoding/plots/SexPrediction.pdf",family="Roboto Condensed",width=12, height=6)
 par(cex=1.3)
 barplot(as.numeric(mat["percent_correct",]*100), names.arg=c("GTEx: training","GTEx: test","TCGA", "SRA"),
-        main="Sex Prediction", ylim=c(0,100), ylab="Accuracy", xlab="Data Set Used", col=colours2, cex.lab=1.3, cex.axis=1.2, cex.main=1.4)
+        main="Sex", ylim=c(0,100), ylab="Accuracy", xlab="Data Set Used", col=colours2, cex.lab=1.3, cex.axis=1.2, cex.main=1.4)
 axis(1, at=c(0,5), xpd=T, lwd.ticks = 0, labels=F)
 #dev.off() 
 ```

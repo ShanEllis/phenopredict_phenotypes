@@ -333,6 +333,10 @@ length(mismatch[mismatch==TRUE])/length(sra_meta_test$sra_misreported_paired_end
 <h1><span class="header-section-number">8</span> Predict Sequnencing Strategy in TCGA</h1>
 <pre class="r"><code>regions = predictor$regiondata
 
+# get phenotype info in order
+recount::all_metadata('TCGA') -&gt; md 
+bws = gsub('.bw','', md$bigwig_file)
+
 if(!file.exists(&quot;/dcl01/leek/data/sellis/barcoding/data/TCGA_SeqStrat_inputdata.rda&quot;)) {
 
   ## Extract same regions from TCGA data
@@ -344,9 +348,7 @@ if(!file.exists(&quot;/dcl01/leek/data/sellis/barcoding/data/TCGA_SeqStrat_input
   ## note: these aren't scaled
   cov_tcga &lt;- assays(rse_sub)$counts
 
-  # get phenotype info in order
-  recount::all_metadata('TCGA') -&gt; md 
-  bws = gsub('.bw','', md$bigwig_file)
+
 
 
   #ensure covmat is in same order as regions
@@ -514,10 +516,10 @@ if(!file.exists(&quot;/dcl01/leek/data/sellis/barcoding/output/SequencingStrateg
 <h1><span class="header-section-number">10</span> Vignette information</h1>
 <pre class="r"><code>## Time spent creating this report:
 diff(c(startTime, Sys.time()))</code></pre>
-<pre><code>## Time difference of 1.789202 mins</code></pre>
+<pre><code>## Time difference of 1.249336 mins</code></pre>
 <pre class="r"><code>## Date this report was generated
 message(Sys.time())</code></pre>
-<pre><code>## 2017-08-07 11:05:59</code></pre>
+<pre><code>## 2017-08-10 15:53:20</code></pre>
 <pre class="r"><code>## Reproducibility info
 options(width = 120)
 devtools::session_info()</code></pre>
@@ -529,7 +531,7 @@ devtools::session_info()</code></pre>
 ##  language (EN)                                       
 ##  collate  en_US.UTF-8                                
 ##  tz       &lt;NA&gt;                                       
-##  date     2017-08-07</code></pre>
+##  date     2017-08-10</code></pre>
 <pre><code>## Packages --------------------------------------------------------------------------------------------------------------</code></pre>
 <pre><code>##  package              * version  date       source        
 ##  acepack                1.4.1    2016-10-29 CRAN (R 3.3.1)
@@ -545,7 +547,7 @@ devtools::session_info()</code></pre>
 ##  bindrcpp               0.2      2017-06-17 CRAN (R 3.3.3)
 ##  Biobase              * 2.34.0   2016-10-20 Bioconductor  
 ##  BiocGenerics         * 0.20.0   2016-10-20 Bioconductor  
-##  BiocParallel         * 1.8.2    2017-04-09 Bioconductor  
+##  BiocParallel           1.8.2    2017-04-09 Bioconductor  
 ##  BiocStyle            * 2.2.1    2016-11-25 Bioconductor  
 ##  biomaRt                2.30.0   2016-10-20 Bioconductor  
 ##  Biostrings             2.42.1   2016-12-02 Bioconductor  
@@ -609,7 +611,7 @@ devtools::session_info()</code></pre>
 ##  IRanges              * 2.8.2    2017-05-22 Bioconductor  
 ##  iterators              1.0.8    2015-10-13 CRAN (R 3.3.0)
 ##  jsonlite               1.5      2017-06-01 CRAN (R 3.3.3)
-##  knitr                * 1.16     2017-05-18 CRAN (R 3.3.1)
+##  knitr                  1.16     2017-05-18 CRAN (R 3.3.1)
 ##  lattice                0.20-34  2016-09-06 CRAN (R 3.3.3)
 ##  latticeExtra           0.6-28   2016-02-09 CRAN (R 3.3.0)
 ##  lazyeval               0.2.0    2016-06-12 CRAN (R 3.3.1)
@@ -632,7 +634,7 @@ devtools::session_info()</code></pre>
 ##  ModelMetrics           1.1.0    2016-08-26 CRAN (R 3.3.1)
 ##  modelr                 0.1.1    2017-07-24 CRAN (R 3.3.3)
 ##  multtest               2.30.0   2016-10-20 Bioconductor  
-##  [ reached getOption(&quot;max.print&quot;) -- omitted 69 rows ]</code></pre>
+##  [ reached getOption(&quot;max.print&quot;) -- omitted 65 rows ]</code></pre>
 <p>Code for creating the vignette</p>
 <pre class="r"><code>## Create the vignette
 library('rmarkdown')
@@ -640,7 +642,7 @@ system.time(render('/dcl01/leek/data/sellis/barcoding/phenotype_vignettes/phenop
 
 ## Extract the R code
 library('knitr')
-knit('/users/sellis/phenopredict/vignettes/phenopredict-SequencingStrategy.Rmd', tangle = TRUE)</code></pre>
+knit('/dcl01/leek/data/sellis/barcoding/phenotype_vignettes/phenopredict-SequencingStrategy.Rmd', tangle = TRUE)</code></pre>
 </div>
 
 

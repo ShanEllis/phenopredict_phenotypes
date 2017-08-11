@@ -268,6 +268,10 @@ length(mismatch[mismatch==TRUE])/length(sra_meta_test$sra_misreported_paired_end
 
 regions = predictor$regiondata
 
+# get phenotype info in order
+recount::all_metadata('TCGA') -> md 
+bws = gsub('.bw','', md$bigwig_file)
+
 if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_SeqStrat_inputdata.rda")) {
 
   ## Extract same regions from TCGA data
@@ -279,9 +283,7 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_SeqStrat_inputdata.
   ## note: these aren't scaled
   cov_tcga <- assays(rse_sub)$counts
 
-  # get phenotype info in order
-  recount::all_metadata('TCGA') -> md 
-  bws = gsub('.bw','', md$bigwig_file)
+
 
 
   #ensure covmat is in same order as regions
@@ -411,7 +413,7 @@ colours2 = c(bright["teal"],bright["teal"],bright["purple"],bright["pink"])
 # pdf("/dcl01/leek/data/sellis/barcoding/plots/SequencingStrategyPrediction.pdf",family="Roboto Condensed",width=12, height=6)
 par(cex=1.3)
 barplot(as.numeric(mat["percent_correct",])*100, names.arg=c("SRA: training","SRA: test","GTEx","TCGA"),
-        main="Sequencing Strategy Prediction", ylim=c(0,100), ylab="Accuracy", xlab="Data Set Used", col=colours2, cex.lab=1.3, cex.axis=1.2, cex.main=1.4)
+        main="Sequencing Strategy", ylim=c(0,100), ylab="Accuracy", xlab="Data Set Used", col=colours2, cex.lab=1.3, cex.axis=1.2, cex.main=1.4)
 axis(1, at=c(0,5), xpd=T, lwd.ticks = 0, labels=F)
 # dev.off()
 
@@ -467,7 +469,7 @@ system.time(render('/dcl01/leek/data/sellis/barcoding/phenotype_vignettes/phenop
 
 ## Extract the R code
 library('knitr')
-knit('/users/sellis/phenopredict/vignettes/phenopredict-SequencingStrategy.Rmd', tangle = TRUE)
+knit('/dcl01/leek/data/sellis/barcoding/phenotype_vignettes/phenopredict-SequencingStrategy.Rmd', tangle = TRUE)
 ```
 
 

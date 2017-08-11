@@ -223,6 +223,11 @@ tissNA = c(tiss, NA)
 # gr = regions
 # export.bed(gr, con="/dcl01/leek/data/sellis/barcoding/TCGA/TCGA_Tissue_v2.bed")
 
+# get phenotype info in order
+recount::all_metadata('TCGA') -> md 
+bws = gsub('.bw','', md$bigwig_file)
+md2 = md[!is.na(md$xml_tumor_tissue_site),]
+
 if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_Tissue_inputdata.rda")) {
 
 	## Extract same regions from TCGA data
@@ -235,9 +240,7 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_Tissue_inputdata.rd
 	## note: these aren't scaled
 	cov_tcga <- assays(rse_sub)$counts
 
-	# get phenotype info in order
-	recount::all_metadata('TCGA') -> md 
-	bws = gsub('.bw','', md$bigwig_file)
+
 
 
 	#ensure covmat is in same order as regions
@@ -250,7 +253,6 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_Tissue_inputdata.rd
 
 		#put data on a log2 scale
 		dm = log2(covmat[,!is.na(md$xml_tumor_tissue_site)]+1)
-		md2 = md[!is.na(md$xml_tumor_tissue_site),]
 	}
 	## only include samples with tissues included in GTEx
 	### Keep only the good SRA
@@ -487,7 +489,7 @@ colours2 = c(bright["purple"],bright["purple"],bright["pink"],bright["teal"])
 # pdf("/dcl01/leek/data/sellis/barcoding/plots/TissuePrediction.pdf",family="Roboto Condensed",width=12, height=6)
 par(cex=1.3)
 barplot(as.numeric(mat["percent_correct",]*100), names.arg=c("GTEx: training","GTEx: test","TCGA", "SRA"),
-        main="Tissue Prediction", ylim=c(0,100), ylab="Accuracy", xlab="Data Set Used", col=colours2, cex.lab=1.3, cex.axis=1.2, cex.main=1.4)
+        main="Tissue", ylim=c(0,100), ylab="Accuracy", xlab="Data Set Used", col=colours2, cex.lab=1.3, cex.axis=1.2, cex.main=1.4)
 axis(1, at=c(0,5), xpd=T, lwd.ticks = 0, labels=F)
 #dev.off()
 

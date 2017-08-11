@@ -298,6 +298,11 @@ predictions_gtex$perc_correct &lt;- perc_correct</code></pre>
 <h1><span class="header-section-number">9</span> Predict phenotype in TCGA</h1>
 <pre class="r"><code>regions = predictor$regiondata
 
+# get phenotype info in order
+recount::all_metadata('TCGA') -&gt; md 
+bws = gsub('.bw','', md$bigwig_file)
+md2 = md[!is.na(md$gdc_cases.demographic.gender),]
+
 if(!file.exists(&quot;/dcl01/leek/data/sellis/barcoding/data/TCGA_Sex_inputdata.rda&quot;)) {
 
   ## Extract same regions from TCGA data
@@ -309,9 +314,7 @@ if(!file.exists(&quot;/dcl01/leek/data/sellis/barcoding/data/TCGA_Sex_inputdata.
   ## note: these aren't scaled
   cov_tcga &lt;- assays(rse_sub)$counts
 
-  # get phenotype info in order
-  recount::all_metadata('TCGA') -&gt; md 
-  bws = gsub('.bw','', md$bigwig_file)
+  
 
 
   #ensure covmat is in same order as regions
@@ -324,13 +327,11 @@ if(!file.exists(&quot;/dcl01/leek/data/sellis/barcoding/data/TCGA_Sex_inputdata.
 
     #put data on a log2 scale
     dm = log2(covmat[,!is.na(md$gdc_cases.demographic.gender)]+1)
-    md2 = md[!is.na(md$gdc_cases.demographic.gender),]
   }else{
     message(&quot;metadata and expression data not in same order&quot;)
   }
 
   tcga_meta2 = md2
-
 
   TCGA_inputdata=c()
   TCGA_inputdata$covmat &lt;- dm
@@ -570,10 +571,10 @@ table(output$description)</code></pre>
 <h1><span class="header-section-number">11</span> Vignette information</h1>
 <pre class="r"><code>## Time spent creating this report:
 diff(c(startTime, Sys.time()))</code></pre>
-<pre><code>## Time difference of 1.277391 mins</code></pre>
+<pre><code>## Time difference of 1.170673 mins</code></pre>
 <pre class="r"><code>## Date this report was generated
 message(Sys.time())</code></pre>
-<pre><code>## 2017-08-07 10:06:22</code></pre>
+<pre><code>## 2017-08-10 15:51:49</code></pre>
 <pre class="r"><code>## Reproducibility info
 options(width = 120)
 devtools::session_info()</code></pre>
@@ -585,7 +586,7 @@ devtools::session_info()</code></pre>
 ##  language (EN)                                       
 ##  collate  en_US.UTF-8                                
 ##  tz       &lt;NA&gt;                                       
-##  date     2017-08-07</code></pre>
+##  date     2017-08-10</code></pre>
 <pre><code>## Packages --------------------------------------------------------------------------------------------------------------</code></pre>
 <pre><code>##  package              * version  date       source        
 ##  acepack                1.4.1    2016-10-29 CRAN (R 3.3.1)
@@ -665,7 +666,7 @@ devtools::session_info()</code></pre>
 ##  IRanges              * 2.8.2    2017-05-22 Bioconductor  
 ##  iterators              1.0.8    2015-10-13 CRAN (R 3.3.0)
 ##  jsonlite               1.5      2017-06-01 CRAN (R 3.3.3)
-##  knitr                * 1.16     2017-05-18 CRAN (R 3.3.1)
+##  knitr                  1.16     2017-05-18 CRAN (R 3.3.1)
 ##  lattice                0.20-34  2016-09-06 CRAN (R 3.3.3)
 ##  latticeExtra           0.6-28   2016-02-09 CRAN (R 3.3.0)
 ##  lazyeval               0.2.0    2016-06-12 CRAN (R 3.3.1)
