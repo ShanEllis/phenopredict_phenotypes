@@ -197,6 +197,12 @@ mismatch = sra_meta_training$sra_misreported_paired_end[set]
 table(mismatch)
 #Proportion of samples with misreported paired end sequencing that are 'incorrect' predictions in SRA training data
 length(mismatch[mismatch==TRUE])/length(sra_meta_training$sra_misreported_paired_end[sra_meta_training$sra_misreported_paired_end==TRUE])
+
+# how many different projects do these come from?
+projnum = sra_meta_training[set,]
+projnum = projnum[mismatch==TRUE,]
+length(unique(projnum$project))
+length(unique(projnum$project))/length(unique(sra_meta_training$project))
 ```
 
 # Extract data for SRA test set
@@ -261,6 +267,13 @@ mismatch = sra_meta_test$sra_misreported_paired_end[set]
 table(mismatch)
 #Proportion of samples with misreported paired end sequencing that are 'incorrect' predictions in SRA training data
 length(mismatch[mismatch==TRUE])/length(sra_meta_test$sra_misreported_paired_end[sra_meta_test$sra_misreported_paired_end==TRUE])
+
+# how many different projects do these come from?
+projnum = sra_meta_test[set,]
+projnum = projnum[mismatch==TRUE,]
+length(unique(projnum$project))
+length(unique(projnum$project))/length(unique(sra_meta_test$project))
+
 ```
 
 # Predict Sequnencing Strategy in TCGA
