@@ -18,7 +18,7 @@ startTime <- Sys.time()
 ```{r load-packages, message = FALSE, warning = FALSE}
 ## load libraries
 library(devtools)
-document("/users/sellis/phenopredict")
+install_github("leekgroup/phenopredict")
 library('phenopredict')
 library(rtracklayer)
 library(recount)
@@ -562,7 +562,7 @@ system.time(render('/dcl01/leek/data/sellis/barcoding/phenotype_vignettes/phenop
 
 ## Extract the R code
 library('knitr')
-knit('/dcl01/leek/data/sellis/barcoding/phenotype_vignettes/phenopredict_predictions/phenopredict-Tissue.Rmd', tangle = TRUE)
+knit('/dcl01/leek/data/sellis/barcoding/phenotype_vignettes/phenopredict-Tissue.Rmd', tangle = TRUE)
 ```
 
 

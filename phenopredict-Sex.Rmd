@@ -18,7 +18,7 @@ startTime <- Sys.time()
 ```{r load-packages, message = FALSE, warning = FALSE}
 ## load libraries
 library(devtools)
-document("/users/sellis/phenopredict")
+install_github("leekgroup/phenopredict")
 library('phenopredict')
 library(rtracklayer)
 library(recount)
@@ -48,6 +48,9 @@ gtex_meta[is.na(gtex_meta[,"SMTS"]),"SMTS"] <- c("Esophagus","Skin","Stomach","S
 usegtex = gtex_meta$usegtex
   pheno = gtex_meta
   pheno = pheno[usegtex,]
+
+#unique indidivudals
+  length(unique(pheno$dbGaP_Sample_ID))
   pheno = pheno[sample_individuals,]
 
 

@@ -18,7 +18,7 @@ startTime <- Sys.time()
 ```{r load-packages, message = FALSE, warning = FALSE}
 ## load libraries
 library(devtools)
-document("/users/sellis/phenopredict")
+install_github("leekgroup/phenopredict")
 library('phenopredict')
 library(rtracklayer)
 library(recount)
