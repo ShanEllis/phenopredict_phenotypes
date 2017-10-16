@@ -68,7 +68,6 @@ recount::all_metadata('TCGA') -> md
 ```
 
 
-
 # Summary: recount2 
 
 A big picture summary of the data included in recount including:
@@ -101,8 +100,8 @@ ggplot(data = proj_summ, aes(Count)) +
     theme_bw()+
     theme(legend.title=element_blank(),plot.title = element_text(hjust = 0.5),text = element_text(size=20), panel.border = element_blank(), panel.grid.major = element_blank(),
 		panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text=element_text(colour="black"))
-
 ```
+
 # Confusion Matrices
 
 To compare predicted phenotypes with reported phenotypres, confusion matrices had to be calculated for each predicted phenotype: sex, tissue, sample source, and sequencing strategy. Below, predicted phenotypes are along side. Reported phenotypes are along top of tables.
