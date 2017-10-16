@@ -67,6 +67,42 @@ gtex_meta = pheno[usegtex,]
 recount::all_metadata('TCGA') -> md 
 ```
 
+
+
+# Summary: recount2 
+
+A big picture summary of the data included in recount including:
+
+* number of samples from each data source (GTEx, SRA, and TCGA)
+* distribution of the number of samples per SRA project  
+
+```{r 'overview', message = FALSE, echo = FALSE, warning = FALSE}
+## number of samples from data source
+(dataset_summ <- df %>%  group_by(dataset) %>% select(dataset) %>% summarise(Count = n()))
+
+## Data set sample size
+ggplot(data = dataset_summ, aes(x=dataset, y = Count,label = Count)) + 
+	labs(y="No. of Samples",x="Data Set",title="Sample Summary") +
+    geom_bar(stat="identity", aes(fill = dataset),position="dodge") +
+    geom_text(size = 6, position = position_stack(),colour="black") +
+    scale_fill_manual(values=c("#940CE8", "#FF6699", "#3BC4C7"))+
+    theme_bw()+
+    theme(legend.title=element_blank(),plot.title = element_text(hjust = 0.5),text = element_text(size=20), panel.border = element_blank(), panel.grid.major = element_blank(),
+		panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text=element_text(colour="black"))
+
+## number of projects (in SRA)
+length(unique(sra_meta$project))
+(proj_summ <- sra_meta %>%  group_by(project) %>% select(project) %>% summarise(Count = n()))
+
+## summary of number of samples per project
+ggplot(data = proj_summ, aes(Count)) + 
+	labs(y="Count",x="Samples per Project",title="Number of Samples by SRA Project") +
+    geom_histogram(binwidth=40)+
+    theme_bw()+
+    theme(legend.title=element_blank(),plot.title = element_text(hjust = 0.5),text = element_text(size=20), panel.border = element_blank(), panel.grid.major = element_blank(),
+		panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text=element_text(colour="black"))
+
+```
 # Confusion Matrices
 
 To compare predicted phenotypes with reported phenotypres, confusion matrices had to be calculated for each predicted phenotype: sex, tissue, sample source, and sequencing strategy. Below, predicted phenotypes are along side. Reported phenotypes are along top of tables.
@@ -167,41 +203,6 @@ x1<-as.table(apply(xtab_tissue,1,prop.table))
 x2<-as.table(apply(xtab_sex,1,prop.table))
 x3<-as.table(apply(xtab_samplesource,1,prop.table))
 x4<-as.table(apply(xtab_sequencingstrategy,1,prop.table))
-```
-
-# Summary: recount2 
-
-A big picture summary of the data included in recount including:
-
-* number of samples from each data source (GTEx, SRA, and TCGA)
-* distribution of the number of samples per SRA project  
-
-```{r 'overview', message = FALSE, echo = FALSE, warning = FALSE}
-## number of samples from data source
-(dataset_summ <- df %>%  group_by(dataset) %>% select(dataset) %>% summarise(Count = n()))
-
-## Data set sample size
-ggplot(data = dataset_summ, aes(x=dataset, y = Count,label = Count)) + 
-	labs(y="No. of Samples",x="Data Set",title="Sample Summary") +
-    geom_bar(stat="identity", aes(fill = dataset),position="dodge") +
-    geom_text(size = 6, position = position_stack(),colour="black") +
-    scale_fill_manual(values=c("#940CE8", "#FF6699", "#3BC4C7"))+
-    theme_bw()+
-    theme(legend.title=element_blank(),plot.title = element_text(hjust = 0.5),text = element_text(size=20), panel.border = element_blank(), panel.grid.major = element_blank(),
-		panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text=element_text(colour="black"))
-
-## number of projects (in SRA)
-length(unique(sra_meta$project))
-(proj_summ <- sra_meta %>%  group_by(project) %>% select(project) %>% summarise(Count = n()))
-
-## summary of number of samples per project
-ggplot(data = proj_summ, aes(Count)) + 
-	labs(y="Count",x="Samples per Project",title="Number of Samples by SRA Project") +
-    geom_histogram(binwidth=40)+
-    theme_bw()+
-    theme(legend.title=element_blank(),plot.title = element_text(hjust = 0.5),text = element_text(size=20), panel.border = element_blank(), panel.grid.major = element_blank(),
-		panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text=element_text(colour="black"))
-
 ```
 
 # Sex
