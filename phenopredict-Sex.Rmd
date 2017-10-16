@@ -18,7 +18,7 @@ startTime <- Sys.time()
 ```{r load-packages, message = FALSE, warning = FALSE}
 ## load libraries
 library(devtools)
-install_github("leekgroup/phenopredict")
+document("/users/sellis/phenopredict")
 library('phenopredict')
 library(rtracklayer)
 library(recount)
@@ -54,10 +54,10 @@ usegtex = gtex_meta$usegtex
   pheno = pheno[sample_individuals,]
 
 
-source("/dcs01/ajaffe/GTEX/Leek/coverageMatrix/simpleLoad/gtexLoad.R")
 
 if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/merge_input_Sex_nocovars.rda")){
 # prepare expression data
+source("/dcs01/ajaffe/GTEX/Leek/coverageMatrix/simpleLoad/gtexLoad.R")
 chrs = c("X","Y")
 for(i in 1:length(chrs)){
   chrname=paste0("chr",chrs[i])    
@@ -88,7 +88,7 @@ nrow(cm)
 ncol(cm)
 
 inputdata<-select_regions(expression=cm, regiondata=regiondata ,phenodata=pheno, phenotype="Sex",
-    covariates=NULL,type="factor", numRegions=100)
+    covariates=NULL,type="factor",numRegions=100)
 
 assign(paste0("inputdata",'_',chrname),inputdata)
 }
@@ -117,7 +117,7 @@ merge_input$regiondata
 
 ```{r 'build-predictor', message = FALSE, warning = FALSE}
 predictor<-build_predictor(inputdata=merge_input ,phenodata=pheno, phenotype="Sex", 
-    covariates=NULL,type="factor", numRegions=20)
+    covariates=NULL,type="factor",numRegions=20)
 # save(predictor,file="data/predictor_Sex_nocovars.rda")
 
 #number of probes used for prediction
@@ -127,17 +127,19 @@ length(predictor$trainingProbes)
 # the number of rows corresponds to the number of sites used for prediction
 # while the columns corresponds to the number of categories of your phenotype.
 dim(predictor$coefEsts)
-
 ```
 
 # Plot expression by sex at a few regions
 
 ```{r 'expression', fig.width=8, fig.height=8}
-ov <-  findOverlaps(predictor$regiondata,merge_input$regiondata)
-index_regions <- subjectHits(ov)
+# ov <-  findOverlaps(predictor$regiondata,merge_input$regiondata)
+# index_regions <- subjectHits(ov)
 #reorder GRanges objects
-dm  <- merge_input$covmat[index_regions,]
-rd <- merge_input$regiondata[index_regions]
+# dm  <- merge_input$covmat[index_regions,]
+# rd <- merge_input$regiondata[index_regions]
+
+dm = merge_input$covmat
+rd = merge_input$regiondata
 par(mfrow=c(2,2)) 
 toplot = c(1,2,21,22)
 for (i in toplot){
@@ -310,7 +312,7 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_Sex_inputdata.rda")
  TCGA_summarized
 
  #get output for package
-predictions_tcga = as.data.frame(cbind(md$gdc_file_id,"tcga",actual=actual_all,predicted=predictions,perc_correct))
+predictions_tcga = as.data.frame(cbind(md2$gdc_file_id,"tcga",actual=actual_all,predicted=predictions,perc_correct))
 ```
 
 
@@ -408,7 +410,7 @@ ov <- findOverlaps(predictor$regiondata,sra_inputdata$regiondata)
 index_regions <- subjectHits(ov)
 #reorder GRanges objects
 sra_inputdata$regiondata <- sra_inputdata$regiondata[index_regions]
-sra_inputdata$covmat <- sra_inputdata$covmat[index_regions,]
+sra_inputdata$covmat <- log2(sra_inputdata$covmat[index_regions,]+1)
 
 predictions<-predict_pheno(inputdata_test= sra_inputdata, phenodata=pheno, phenotype="Sex", covariates=NULL,type="factor", predictordata = predictor)
 # number of samples
@@ -496,11 +498,15 @@ save(predictions_Sex, file="/dcl01/leek/data/sellis/barcoding/output/predictions
 ```{r 'region-information', message = FALSE, warning = FALSE}
 ## Get required information for the plots
 if(!file.exists("/dcl01/leek/data/sellis/barcoding/output/Sex_regions.rda")){
+```
+library(bumphunter)
+txdb <- makeTxDbFromGFF('ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_25/gencode.v25.annotation.gff3.gz', format = 'gff3', organism = 'Homo sapiens')
+tx<-annotateTranscripts(txdb)
+annotation <- matchGenes(x = predictor$regiondata, subject = tx)
 
-txdb <- GenomicFeatures::makeTxDbFromGFF('ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_25/gencode.v25.annotation.gff3.gz', format = 'gff3', organism = 'Homo sapiens')
-tx<-annotateTranscripts(txdb, annotationPackage = NULL, by = c("tx","gene"), codingOnly=FALSE, verbose = TRUE, requireAnnotation = FALSE)
-output<-matchGenes(predictor$regiondata, tx, type = c("any", "fiveprime"), promoterDist = 2500, skipExons = FALSE, verbose = TRUE)
-save(output, file= "/dcl01/leek/data/sellis/barcoding/output/Sex_regions.rda")
+table(annotation$description)
+table(seqnames(predictor$regiondata))
+save(annotation, file= "/dcl01/leek/data/sellis/barcoding/output/Sex_regions.rda")
 }else{
   load("/dcl01/leek/data/sellis/barcoding/output/Sex_regions.rda")
 }

@@ -18,7 +18,8 @@ startTime <- Sys.time()
 ```{r load-packages, message = FALSE, warning = FALSE}
 ## load libraries
 library(devtools)
-install_github("leekgroup/phenopredict")
+# install_github("leekgroup/phenopredict")
+document("/users/sellis/phenopredict")
 library('phenopredict')
 library(rtracklayer)
 library(recount)
@@ -136,7 +137,9 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/SRA_inputdata_Sequencing
 
 	#remove "id"column
 	merge_input$covmat = dplyr::select(merge_input$covmat, -(.id))
-
+    ## so that I never have to run this chunk again
+    save(xx, file='/dcl01/leek/data/sellis/barcoding/data/SRA_fulldata_SequencingStrategy.Rdata')
+    ## so that I have what I need
 	  save(merge_input,file='/dcl01/leek/data/sellis/barcoding/data/SRA_inputdata_SequencingStrategy.Rdata')
 	}else{
 	  load('/dcl01/leek/data/sellis/barcoding/data/SRA_inputdata_SequencingStrategy.Rdata')
@@ -154,7 +157,7 @@ merge_input$regiondata
 ```{r 'build-predictor', message = FALSE, warning = FALSE}
 if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/build_predictor_SequencingStrategy_nocovars.rda")) {
 	predictor<-build_predictor(inputdata=merge_input ,phenodata=sra_meta_training, phenotype=phenot,		 
-		covariates=NULL,type="factor", numRegions=40)
+		covariates=NULL,type="factor", numRegions=20)
 	save(predictor, file= "/dcl01/leek/data/sellis/barcoding/data/build_predictor_SequencingStrategy_nocovars.rda")
 }else{
 	load('/dcl01/leek/data/sellis/barcoding/data/build_predictor_SequencingStrategy_nocovars.rda')
@@ -194,9 +197,17 @@ predictions_SequencingStrategy = data.frame(cbind(sra_meta_training$run,"sra",ac
 ## how do predictions fare when sra_misreported_paired_end==TRUE
 set <- actual!=predicted
 mismatch = sra_meta_training$sra_misreported_paired_end[set]
+table(sra_meta_training$sra_misreported_paired_end)
+
 table(mismatch)
 #Proportion of samples with misreported paired end sequencing that are 'incorrect' predictions in SRA training data
 length(mismatch[mismatch==TRUE])/length(sra_meta_training$sra_misreported_paired_end[sra_meta_training$sra_misreported_paired_end==TRUE])
+
+## Percent correct, accounting for mismatch samples
+sum(predicted==actual)+length(mismatch[mismatch==TRUE])
+length(actual)
+(perc_correct_adjusted = as.numeric((sum(predicted==actual)+length(mismatch[mismatch==TRUE]))/length(actual)))
+
 
 # how many different projects do these come from?
 projnum = sra_meta_training[set,]
@@ -214,7 +225,11 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/sra_test_inputdata_Seque
 	purrr::map(xx, function(x){return(x$sra_test)}) %>% ldply(., data.frame) -> sra_test_covmat
 	#remove "id"column
 	sra_test_covmat= dplyr::select(sra_test_covmat, -(.id))
+
 	colremove<-grep("regiondata", colnames(sra_test_covmat))
+  sra_test_regiondata= sra_test_covmat[, colremove]
+  identical(sra_test_regiondata$regiondata.width, width(merge_input$regiondata))
+  ## can just use merge_input$regiondata as regiondata object
 	sra_test_covmat= sra_test_covmat[, -colremove]
 
 	  sra_test_inputdata=list()
@@ -233,7 +248,7 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/sra_test_inputdata_Seque
 # Predict Sequencing Strategy in SRA test set
 
 ```{r 'predict-phenotype', message = FALSE, warning = FALSE}
-predictions<-predict_pheno(inputdata_test= sra_test_inputdata, phenodata=sra_meta_training, phenotype=phenot, covariates=NULL,type="factor", predictordata = predictor)
+predictions<-predict_pheno(inputdata_test= sra_test_inputdata, phenodata=sra_meta_test, phenotype=phenot, covariates=NULL,type="factor", predictordata = predictor)
 # number of samples
 length(predictions)
 
@@ -263,10 +278,18 @@ predictions_SequencingStrategy$perc_correct <- perc_correct
 
 ## how do predictions fare when sra_misreported_paired_end==TRUE
 set <- actual!=predicted
+table(sra_meta_test$sra_misreported_paired_end)
 mismatch = sra_meta_test$sra_misreported_paired_end[set]
 table(mismatch)
 #Proportion of samples with misreported paired end sequencing that are 'incorrect' predictions in SRA training data
 length(mismatch[mismatch==TRUE])/length(sra_meta_test$sra_misreported_paired_end[sra_meta_test$sra_misreported_paired_end==TRUE])
+
+
+## Percent correct, accounting for mismatch samples
+sum(predicted==actual)+length(mismatch[mismatch==TRUE])
+length(actual)
+(perc_correct_adjusted = as.numeric((sum(predicted==actual)+length(mismatch[mismatch==TRUE]))/length(actual)))
+
 
 # how many different projects do these come from?
 projnum = sra_meta_test[set,]
@@ -380,15 +403,60 @@ usegtex = gtex_meta$usegtex
 pheno = gtex_meta
 pheno = pheno[usegtex,]
 
-load("/dcl01/leek/data/sellis/barcoding/data/regions_LibraryLayout_GTEx.rda")
-covmat = cov_gtex[,4:ncol(cov_gtex)]
-covmat = covmat[,usegtex]
+if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/GTEx_inputdata_sequencingstrategy.rda")) {
+## Get GTEx data
+  source("/dcl01/leek/data/sellis/barcoding/scripts/gtexLoad.R")
 
-gtex_test_inputdata = list()
-gtex_test_inputdata$covmat <- log2(covmat+1)
-gtex_test_inputdata$regiondata <- regions
+  chrs = c("X","Y",1:22)
+  i=1
+  chrname=paste0("chr",chrs[i])
+    cat(paste0(chrname,"..."))
+    dat = gtexLoad(chrname)
+    cm = dat$coverageMatrix
+    regiondata = dat$regions
+    cm = log2(cm + 1)
+    wid = width(dat$regions)
+    cm = cm[, usegtex]
 
-predictions_gtex<-predict_pheno(inputdata_test= gtex_test_inputdata, phenodata=sra_meta_training, phenotype=phenot, covariates=NULL,type="factor", predictordata = predictor)
+    gtex_inputdata = list()
+    ov <- findOverlaps(predictor$regiondata,regiondata)
+    index_regions <- subjectHits(ov)
+    #reorder GRanges objects
+    gtex_inputdata$regiondata <- regiondata[index_regions]
+    gtex_inputdata$covmat <- cm[index_regions,]
+
+  for(i in 2:length(chrs)){
+    chrname=paste0("chr",chrs[i])
+    cat(paste0(chrname,"..."))
+    dat = gtexLoad(chrname)
+    cm = dat$coverageMatrix
+    regiondata = dat$regions
+    cm = log2(cm + 1)
+    wid = width(dat$regions)
+    cm = cm[, usegtex]
+
+    ov <- findOverlaps(predictor$regiondata,regiondata)
+    index_regions <- subjectHits(ov)
+    #reorder GRanges objects
+    gtex_inputdata$regiondata <- c(gtex_inputdata$regiondata,regiondata[index_regions])
+    gtex_inputdata$covmat <- rbind(gtex_inputdata$covmat,cm[index_regions,])  
+  }
+
+  ov <- findOverlaps(predictor$regiondata,gtex_inputdata$regiondata)
+    index_regions <- subjectHits(ov)
+    #reorder GRanges objects
+    gtex_inputdata$regiondata <- gtex_inputdata$regiondata[index_regions]
+    gtex_inputdata$covmat <- gtex_inputdata$covmat[index_regions,] 
+    gtex_inputdata$regiondata <- predictor$regiondata
+
+
+  save(gtex_inputdata, file="/dcl01/leek/data/sellis/barcoding/data/GTEx_inputdata_sequencingstrategy.rda")
+}else{
+  load("/dcl01/leek/data/sellis/barcoding/data/GTEx_inputdata_sequencingstrategy.rda")
+}
+
+
+predictions_gtex<-predict_pheno(inputdata_test= gtex_inputdata, phenodata=pheno, phenotype=phenot, covariates=NULL,type="factor", predictordata = predictor)
 # number of samples
 length(predictions_gtex)
 
@@ -447,16 +515,17 @@ save(predictions_SequencingStrategy, file="/dcl01/leek/data/sellis/barcoding/out
 
 ```{r 'region-information', message = FALSE, warning = FALSE}
 ## Get required information for the plots
-if(!file.exists("/dcl01/leek/data/sellis/barcoding/output/SequencingStrategy_regions.rda")) {
-	txdb <- GenomicFeatures::makeTxDbFromGFF('ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_25/gencode.v25.annotation.gff3.gz', format = 'gff3', organism = 'Homo sapiens')
-	tx<-annotateTranscripts(txdb, annotationPackage = NULL, by = c("tx","gene"), codingOnly=FALSE, verbose = TRUE, requireAnnotation = FALSE)
-	output<-matchGenes(predictor$regiondata, tx, type = c("any", "fiveprime"), promoterDist = 2500, skipExons = FALSE, verbose = TRUE)
-	output
-	save(output, file= "/dcl01/leek/data/sellis/barcoding/output/SequencingStrategy_regions.rda")
-}else{
-	load("/dcl01/leek/data/sellis/barcoding/output/SequencingStrategy_regions.rda")
-	table(output$description)
-}
+# if(!file.exists("/dcl01/leek/data/sellis/barcoding/output/SequencingStrategy_regions.rda")) {
+# 	library(minfi)
+#   txdb <- GenomicFeatures::makeTxDbFromGFF('ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_25/gencode.v25.annotation.gff3.gz', format = 'gff3', organism = 'Homo sapiens')
+# 	tx<-annotateTranscripts(txdb, annotationPackage = NULL, by = c("tx","gene"), codingOnly=FALSE, verbose = TRUE, requireAnnotation = FALSE)
+# 	output<-matchGenes(predictor$regiondata, tx, type = c("any", "fiveprime"), promoterDist = 2500, skipExons = FALSE, verbose = TRUE)
+# 	table(output$description)
+# 	save(output, file= "/dcl01/leek/data/sellis/barcoding/output/SequencingStrategy_regions.rda")
+# }else{
+# 	load("/dcl01/leek/data/sellis/barcoding/output/SequencingStrategy_regions.rda")
+# 	table(output$description)
+# }
 ```
 
 # Vignette information

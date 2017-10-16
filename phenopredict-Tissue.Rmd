@@ -18,7 +18,9 @@ startTime <- Sys.time()
 ```{r load-packages, message = FALSE, warning = FALSE}
 ## load libraries
 library(devtools)
-install_github("leekgroup/phenopredict")
+# install_github("leekgroup/phenopredict")
+document("/users/sellis/phenopredict")
+
 library('phenopredict')
 library(rtracklayer)
 library(recount)
@@ -51,7 +53,7 @@ pheno = pheno[sample_individuals,]
 
 # prepare expression data
 if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/merge_input_SMTS_nocovars.rda")){
-	source("/dcl01/leek/data/sellis/barcoding/scripts/gtexLoad.R")
+source("/dcs01/ajaffe/GTEX/Leek/coverageMatrix/simpleLoad/gtexLoad.R")
 	chrs = c("X","Y",1:22)
 	for(i in 1:length(chrs)){
 	  chrname=paste0("chr",chrs[i])
@@ -110,7 +112,7 @@ merge_input$regiondata
 ```{r 'build-predictor', message = FALSE, warning = FALSE}
 if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/merge_input_SMTS_nocovars.rda")) {
 	predictor<-build_predictor(inputdata=merge_input ,phenodata=pheno, phenotype="SMTS",		 
-    	covariates=NULL,type="factor", numRegions=40)
+    	covariates=NULL,type="factor", numRegions=80)
 	save(predictor, file= "/dcl01/leek/data/sellis/barcoding/data/build_predictor_SMTS_nocovars.rda")
 }else{
 	load('/dcl01/leek/data/sellis/barcoding/data/build_predictor_SMTS_nocovars.rda')
@@ -174,7 +176,7 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/merge_test_SMTS_nocovars
 }
 ```
 
-# Predict Tissue in GTEx
+# Predict Tissue in GTEx: test data
 
 ```{r 'predict-phenotype', message = FALSE, warning = FALSE}
 predictions<-predict_pheno(inputdata_test= merge_test, phenodata=pheno, phenotype="SMTS", covariates=NULL,type="factor", predictordata = predictor)
@@ -206,7 +208,6 @@ length(predictions)
  #get output for package
 predictions_gtex_test = as.data.frame(cbind(pheno2$Run,"gtex",actual=as.character(actual),predicted,perc_correct))
 predictions_gtex$perc_correct <- perc_correct
-
 ```
 
 # Predict Tissue in TCGA
@@ -239,9 +240,6 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_Tissue_inputdata.rd
 	## get coverage matrix ; order same as in regions
 	## note: these aren't scaled
 	cov_tcga <- assays(rse_sub)$counts
-
-
-
 
 	#ensure covmat is in same order as regions
 	if( identical(tolower(bws),colnames(cov_tcga) )==TRUE){
@@ -292,8 +290,8 @@ number_sites = nrow(predictor$coefEsts)
 TCGA_summarized = c(number_sites,number_match, perc_correct)
 names(TCGA_summarized) <- c("sites_tested", "number_correct", "percent_correct")
  
- #compare predictions to known sex
- TCGA_summarized
+#compare predictions to known sex
+TCGA_summarized
 
 #get output for package
 predictions_tcga = as.data.frame(cbind(tcga_meta2$gdc_file_id,"tcga",actual,predicted,perc_correct))
@@ -449,7 +447,7 @@ predictions<-predict_pheno(inputdata_test= SRA_inputdata, phenodata=pheno, pheno
 length(predictions)
 
 ## test for accuracy
-actual_all = sra_meta$sharq_beta_tissue
+actual_all = tools::toTitleCase(sra_meta$sharq_beta_tissue)
 #define predicted
 predicted_all = predictions
 
@@ -457,7 +455,7 @@ predicted_all = predictions
 keep = !is.na(sra_meta$sharq_beta_tissue) & sra_meta$sharq_beta_tissue %in% tolower(tiss)
 actual = actual_all[keep]
 predicted = predicted_all[keep]
-predicted = tolower(predicted)
+predicted = predicted
 length(predicted)
 
 #summarize data
@@ -498,8 +496,8 @@ axis(1, at=c(0,5), xpd=T, lwd.ticks = 0, labels=F)
 
 toplot = as.numeric(mat["percent_correct",])*100
 names(toplot) <- c("GTEx: training","GTEx: test","TCGA", "SRA")
-toplot["TCGA_ht"] <- perc_correct_ht*100
-toplot["TCGA_cancer"] <- perc_correct_cancer*100
+(toplot["TCGA_ht"] <- perc_correct_ht*100)
+(toplot["TCGA_cancer"] <- perc_correct_cancer*100)
 toplot = toplot[-3]
 toplot = toplot[c(1,2,4,5,3)]
 colours2 = c(bright["purple"],bright["purple"],bright["pink"],bright["pink"],bright["teal"])
@@ -528,10 +526,13 @@ save(predictions_Tissue, file="/dcl01/leek/data/sellis/barcoding/output/predicti
 ```{r 'region-information', message = FALSE, warning = FALSE}
 ## Get required information for the plots
 if(!file.exists('/dcl01/leek/data/sellis/barcoding/output/Tissue_regions.rda')) {	
-	txdb <- GenomicFeatures::makeTxDbFromGFF('ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_25/gencode.v25.annotation.gff3.gz', format = 'gff3', organism = 'Homo sapiens')
-	tx<-annotateTranscripts(txdb, annotationPackage = NULL, by = c("tx","gene"), codingOnly=FALSE, verbose = TRUE, requireAnnotation = FALSE)
-	output<-matchGenes(predictor$regiondata, tx, type = c("any", "fiveprime"), promoterDist = 2500, skipExons = FALSE, verbose = TRUE)
-	save(output, file= "/dcl01/leek/data/sellis/barcoding/output/Tissue_regions.rda")
+library(bumphunter)
+txdb <- makeTxDbFromGFF('ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_25/gencode.v25.annotation.gff3.gz', format = 'gff3', organism = 'Homo sapiens')
+tx<-annotateTranscripts(txdb)
+annotation <- matchGenes(x = predictor$regiondata, subject = tx)
+
+table(annotation$description)
+	save(annotation, file= "/dcl01/leek/data/sellis/barcoding/output/Tissue_regions.rda")
 }else{
 	load('/dcl01/leek/data/sellis/barcoding/output/Tissue_regions.rda')
 	table(output$description)

@@ -18,7 +18,8 @@ startTime <- Sys.time()
 ```{r load-packages, message = FALSE, warning = FALSE}
 ## load libraries
 library(devtools)
-install_github("leekgroup/phenopredict")
+# install_github("leekgroup/phenopredict")
+document("/users/sellis/phenopredict")
 library('phenopredict')
 library(rtracklayer)
 library(recount)
@@ -63,7 +64,7 @@ library('BiocParallel')
 	  # selecting training and test set samples
 	 load(paste0('/dcl01/leek/data/gtex_work/runs/sra/DER_analysis/coverageMatrix/ers_gtex/coverageMatrix-cut0.5-', chunk_name[107], '.Rdata'))
 	  set.seed(1567)
-	  samples_to_use<-sample(colnames(coverageMatrix), ncol(coverageMatrix)/2 )
+	  samples_to_use<-sample(colnames(coverageMatrix), ncol(coverageMatrix)/2)
 	  keep = colnames(coverageMatrix) %in% samples_to_use
 
 	## load SRA metadata
@@ -187,7 +188,9 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/SRA_inputdata_SampleSour
 
 	#remove "id"column
 	merge_input$covmat = dplyr::select(merge_input$covmat, -(.id))
-
+	## so that I never have to run this again...
+	  save(xx, file='/dcl01/leek/data/sellis/barcoding/data/SRA_fulldata_SampleSource.Rdata')
+	## so that I have what I need
 	  save(merge_input,file='/dcl01/leek/data/sellis/barcoding/data/SRA_inputdata_SampleSource.Rdata')
 	}else{
 	  load('/dcl01/leek/data/sellis/barcoding/data/SRA_inputdata_SampleSource.Rdata')
@@ -294,7 +297,7 @@ predictions_sra = as.data.frame(cbind(sra_meta_training_noNAs$run,"sra",actual=a
 ```{r 'extract-data', message = FALSE, warning = FALSE}
 # looking at the input data for extract_data
 if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/sra_test_inputdata_SampleSource_nocovars.rda")) {
-
+	load('/dcl01/leek/data/sellis/barcoding/data/build_predictor_SampleSource_nocovars.rda')
 	purrr::map(xx, function(x){return(x$sra_test)}) %>% ldply(., data.frame) -> sra_test_covmat
 	#remove "id"column
 	sra_test_covmat= dplyr::select(sra_test_covmat, -(.id))
@@ -497,62 +500,119 @@ gtex_meta[is.na(gtex_meta[,"SMTS"]),"SMTS"] <- c("Esophagus","Skin","Stomach","S
 usegtex = gtex_meta$usegtex
 pheno = gtex_meta
 pheno = pheno[usegtex,]
+pheno[,phenot] <- "tissue"
 
-if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/regions_CellLine_GTEx.rda")) {
+## Get GTEx data
+if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/GTEx_inputdata_samplesource.rda")) {
+## Get GTEx data
+  source("/dcl01/leek/data/sellis/barcoding/scripts/gtexLoad.R")
 
-	system('sh /dcl01/leek/data/sellis/barcoding/scripts/run_bwtool_CellLine.sh gtex')
+  chrs = c("X","Y",1:22)
+  i=1
+  chrname=paste0("chr",chrs[i])
+    cat(paste0(chrname,"..."))
+    dat = gtexLoad(chrname)
+    cm = dat$coverageMatrix
+    regiondata = dat$regions
+    cm = log2(cm + 1)
+    wid = width(dat$regions)
+    cm = cm[, usegtex]
 
-	tsv <- dir('/dcl01/leek/data/sellis/barcoding/GTEx/bwtool/coverage_gtex_CellLine', pattern = 'tsv', full.names = TRUE)
-	names(tsv) <- gsub('.sum.tsv', '', dir('/dcl01/leek/data/sellis/barcoding/GTEx/bwtool/coverage_gtex_CellLine', pattern = 'tsv'))
-	system.time( tsv_lines <- bplapply(tsv, countLines))
-	all(tsv_lines == length(regions))
+    gtex_inputdata = list()
+    ov <- findOverlaps(predictor$regiondata,regiondata)
+    index_regions <- subjectHits(ov)
+    #reorder GRanges objects
+    gtex_inputdata$regiondata <- regiondata[index_regions]
+    gtex_inputdata$covmat <- cm[index_regions,]
 
-	multmerge = function(mypath){
-		filenames=list.files(path=mypath, full.names=TRUE)
-		datalist = lapply(filenames, function(x){
-			read.table(file=x,header=F,sep='\t') 
-		})
-		Reduce(function(x,y) {cbind(x,y[,4])}, datalist)
-	}
+  for(i in 2:length(chrs)){
+    chrname=paste0("chr",chrs[i])
+    cat(paste0(chrname,"..."))
+    dat = gtexLoad(chrname)
+    cm = dat$coverageMatrix
+    regiondata = dat$regions
+    cm = log2(cm + 1)
+    wid = width(dat$regions)
+    cm = cm[, usegtex]
 
-	mymergeddata = multmerge('/dcl01/leek/data/sellis/barcoding/GTEx/bwtool/coverage_gtex_CellLine')
-	filenames=list.files(path='/dcl01/leek/data/sellis/barcoding/GTEx/bwtool/coverage_gtex_CellLine', full.names=FALSE)
+    ov <- findOverlaps(predictor$regiondata,regiondata)
+    index_regions <- subjectHits(ov)
+    #reorder GRanges objects
+    gtex_inputdata$regiondata <- c(gtex_inputdata$regiondata,regiondata[index_regions])
+    gtex_inputdata$covmat <- rbind(gtex_inputdata$covmat,cm[index_regions,])  
+  }
 
-	filenames = gsub('.sum.tsv', '', filenames)
-	colnames(mymergeddata)[4:ncol(mymergeddata)] <- filenames
-
-	cov_gtex = mymergeddata
-	save(cov_gtex, file="/dcl01/leek/data/sellis/barcoding/data/regions_CellLine_GTEx.rda")
-}else{	
-	load("/dcl01/leek/data/sellis/barcoding/data/regions_CellLine_GTEx.rda")
+	save(gtex_inputdata, file="/dcl01/leek/data/sellis/barcoding/data/GTEx_inputdata_samplesource.rda")
+}else{
+	load("/dcl01/leek/data/sellis/barcoding/data/GTEx_inputdata_samplesource.rda")
 }
-covmat = cov_gtex[,4:ncol(cov_gtex)]
-#only use keep GTEx samples
-covmat = covmat[,usegtex]
+# if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/regions_CellLine_GTEx.rda")) {
 
-# get phenotype info in order
+# 	system('sh /dcl01/leek/data/sellis/barcoding/scripts/run_bwtool_CellLine.sh gtex')
 
-#put data on a log2 scale
-dm = log2(covmat+1)
+# 	tsv <- dir('/dcl01/leek/data/sellis/barcoding/GTEx/bwtool/coverage_gtex_CellLine', pattern = 'tsv', full.names = TRUE)
+# 	names(tsv) <- gsub('.sum.tsv', '', dir('/dcl01/leek/data/sellis/barcoding/GTEx/bwtool/coverage_gtex_CellLine', pattern = 'tsv'))
+# 	system.time( tsv_lines <- bplapply(tsv, countLines))
+# 	all(tsv_lines == length(regions))
 
-gtex_test_inputdata = list()
-gtex_test_inputdata$covmat <- dm
-gtex_test_inputdata$regiondata <- regions
+# 	multmerge = function(mypath){
+# 		filenames=list.files(path=mypath, full.names=TRUE)
+# 		datalist = lapply(filenames, function(x){
+# 			read.table(file=x,header=F,sep='\t') 
+# 		})
+# 		Reduce(function(x,y) {cbind(x,y[,4])}, datalist)
+# 	}
 
-predictions_gtex<-predict_pheno(inputdata_test= gtex_test_inputdata, phenodata=sra_meta_training, phenotype=phenot, covariates=NULL,type="factor", predictordata = predictor)
-# number of samples
-length(predictions_gtex)
+# 	mymergeddata = multmerge('/dcl01/leek/data/sellis/barcoding/GTEx/bwtool/coverage_gtex_CellLine')
+# 	filenames=list.files(path='/dcl01/leek/data/sellis/barcoding/GTEx/bwtool/coverage_gtex_CellLine', full.names=FALSE)
 
-#since we know the truth here, let's check and see how we're doing: 
-  actual = rep("tissue",length(predictions_gtex))
+# 	filenames = gsub('.sum.tsv', '', filenames)
+# 	colnames(mymergeddata)[4:ncol(mymergeddata)] <- filenames
 
+# 	cov_gtex = mymergeddata
+# 	save(cov_gtex, file="/dcl01/leek/data/sellis/barcoding/data/regions_CellLine_GTEx.rda")
+# }else{	
+# 	load("/dcl01/leek/data/sellis/barcoding/data/regions_CellLine_GTEx.rda")
+# }
+# covmat = cov_gtex[,4:ncol(cov_gtex)]
+# #only use keep GTEx samples
+# covmat = covmat[,usegtex]
+
+# # get phenotype info in order
+
+# #put data on a log2 scale
+# dm = log2(covmat+1)
+
+# gtex_test_inputdata = list()
+# gtex_test_inputdata$covmat <- dm
+# gtex_test_inputdata$regiondata <- regions
+
+  gtex_data=list()
+
+    ov <- findOverlaps(predictor$regiondata,gtex_inputdata$regiondata)
+    index_regions <- subjectHits(ov)
+    #reorder GRanges objects
+    gtex_data$regiondata <- gtex_inputdata$regiondata[index_regions]
+    names(gtex_data$regiondata) <- names(predictor$regiondata)
+    gtex_data$covmat <- gtex_inputdata$covmat[index_regions,]
+
+   ## predict in GTEx data
+  predictions_gtex<-predict_pheno(inputdata_test= gtex_data, phenodata=sra_meta_training, phenotype=phenot, covariates=NULL,type="factor", predictordata = predictor)
+
+  # number of samples
+  length(predictions_gtex)
+
+  actual_all =  pheno[,phenot]
+  ## remove NAs from actual
+  keep = !is.na(predictions_gtex)
+  actual = actual_all[keep]
   #define predicted
-  predicted = predictions_gtex
+  predicted = predictions_gtex[keep]
 
   #summarize data
-	number_match <- sum(predicted==actual)
-	perc_correct = sum(predicted==actual)/length(actual)
-	number_sites = nrow(predictor$coefEsts)
+  number_match <- sum(predicted==actual)
+  perc_correct = sum(predicted==actual)/length(actual)
+  number_sites = nrow(predictor$coefEsts)
 
 	summarized_gtex = cbind(number_sites,number_match, perc_correct)
 	colnames(summarized_gtex) <- c("sites_tested", "number_correct", "percent_correct")
@@ -599,10 +659,11 @@ save(predictions_SampleSource, file="/dcl01/leek/data/sellis/barcoding/output/pr
 ```{r 'region-information', message = FALSE, warning = FALSE}
 ## Get required information for the plots
 if(!file.exists("/dcl01/leek/data/sellis/barcoding/output/SampleSource_regions.rda")) {	
+	library(minfi)
 	txdb <- GenomicFeatures::makeTxDbFromGFF('ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_25/gencode.v25.annotation.gff3.gz', format = 'gff3', organism = 'Homo sapiens')
 	tx<-annotateTranscripts(txdb, annotationPackage = NULL, by = c("tx","gene"), codingOnly=FALSE, verbose = TRUE, requireAnnotation = FALSE)
 	output<-matchGenes(predictor$regiondata, tx, type = c("any", "fiveprime"), promoterDist = 2500, skipExons = FALSE, verbose = TRUE)
-	output
+	table(output$description)
 	save(output, file= "/dcl01/leek/data/sellis/barcoding/output/SampleSource_regions.rda")
 }else{
 	load("/dcl01/leek/data/sellis/barcoding/output/SampleSource_regions.rda")
