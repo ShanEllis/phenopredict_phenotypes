@@ -305,7 +305,7 @@ A summary of tissue across recount including:
 ```{r 'tissue', message = FALSE, warning = FALSE, echo = FALSE, fig.width = 8, fig.height = 8}
 
 ## overall breakdown of predicted tissue
-a<-tiss %>% select(predicted) %>% table() %>% melt()
+a<- df %>% select(predicted_tissue) %>% table() %>% melt()
 colnames(a) <- c("predicted_tissue","Count")
 a 
 
