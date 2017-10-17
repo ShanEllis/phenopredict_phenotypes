@@ -146,12 +146,15 @@ for(phenot in phenotypes){
 		reported <- reported[!remove]
 		predicted <- predicted[!remove]
 
-		reported <- droplevels(reported)
-		predicted <- droplevels(predicted)
+		xtab_tissue_all <- table(predicted,reported)
 
 		keep <- reported %in% names(table(predicted))
 		reported <- reported[keep]
 		predicted <- predicted[keep]
+
+		reported <- droplevels(reported)
+		predicted <- droplevels(predicted)
+		levels(reported) <- levels(predicted)
 
  		tiss<-bind_cols(reported=reported,predicted=predicted)
 	}
@@ -197,7 +200,7 @@ Vals_all<-cbind(Vals_tissue,Vals_sex,Vals_sequencingstrategy,Vals_samplesource)
 # summary(na.omit(Vals_all[2,]))
 
 print(xtable(xtab_sex), comment=F, type="html")
-print(xtable(xtab_tissue), comment=F, type="html")
+print(xtable(xtab_tissue_all), comment=F, type="html")
 print(xtable(xtab_samplesource), comment=F, type="html")
 print(xtable(xtab_sequencingstrategy), comment=F, type="html")
 
@@ -371,6 +374,13 @@ b <- x1[dimnames(x1)$reported %in% dimnames(x1)$predicted,]
 	)
 
   ggplot(data = as.data.frame(b), aes(x=predicted, y=reported, fill=Freq)) + 
+  geom_tile()+
+  theme(legend.title=element_blank(),text = element_text(size=14),plot.title = element_text(size=24,hjust = 0.5),axis.text.x=element_text(angle=90,hjust=1))+
+  labs(title="Tissue")
+
+dimnames(xtab_tissue_all)$reported[42] <- "Cutaneous or Subcutaneous Tissue"
+## confusion matrix for all reported tissues, not just the ones we had the chance to get right
+  ggplot(data = as.data.frame(xtab_tissue_all), aes(x=predicted, y=reported, fill=Freq)) + 
   geom_tile()+
   theme(legend.title=element_blank(),text = element_text(size=14),plot.title = element_text(size=24,hjust = 0.5),axis.text.x=element_text(angle=90,hjust=1))+
   labs(title="Tissue")
