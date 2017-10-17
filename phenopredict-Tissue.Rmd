@@ -227,7 +227,6 @@ tissNA = c(tiss, NA)
 # get phenotype info in order
 recount::all_metadata('TCGA') -> md 
 bws = gsub('.bw','', md$bigwig_file)
-md2 = md[!is.na(md$xml_tumor_tissue_site),]
 
 if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_Tissue_inputdata.rda")) {
 
@@ -250,17 +249,13 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_Tissue_inputdata.rd
 		covmat = covmat[,colnames(covmat) %in% tolower(bws)]
 
 		#put data on a log2 scale
-		dm = log2(covmat[,!is.na(md$xml_tumor_tissue_site)]+1)
+		dm = log2(covmat+1)
 	}
-	## only include samples with tissues included in GTEx
-	### Keep only the good SRA
-	tiss_in_gtex = md2$xml_tumor_tissue_site %in% tiss
-	tcgaGene = dm[,tiss_in_gtex]
-	tcga_meta2 = md2[tiss_in_gtex,]
+
 
 
 	TCGA_inputdata=c()
-	TCGA_inputdata$covmat <- tcgaGene
+	TCGA_inputdata$covmat <- dm
 	TCGA_inputdata$regiondata <- predictor$regiondata
 
 	  ov <- findOverlaps(predictor$regiondata,TCGA_inputdata$regiondata)
@@ -269,7 +264,7 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_Tissue_inputdata.rd
 	  TCGA_inputdata$regiondata <- TCGA_inputdata$regiondata[index_regions]
 	  TCGA_inputdata$covmat <- TCGA_inputdata$covmat[index_regions,]
 
-	  save(TCGA_inputdata, tcga_meta2, file="/dcl01/leek/data/sellis/barcoding/data/TCGA_Tissue_inputdata.rda")
+	  save(TCGA_inputdata, md, file="/dcl01/leek/data/sellis/barcoding/data/TCGA_Tissue_inputdata.rda")
 }else{
 	load("/dcl01/leek/data/sellis/barcoding/data/TCGA_Tissue_inputdata.rda")
 }
@@ -278,9 +273,20 @@ predictions<-predict_pheno(inputdata_test= TCGA_inputdata, phenodata=pheno, phen
 # number of samples
 length(predictions)
 
-actual = as.character(tcga_meta2$xml_tumor_tissue_site)
+
+actual = as.character(md$xml_tumor_tissue_site)
 #define predicted
 predicted = predictions
+
+## only assess accuraccy samples with tissues included in GTEx
+md2 = md[!is.na(md$xml_tumor_tissue_site),]
+actual = actual[!is.na(md$xml_tumor_tissue_site)]
+predicted = predicted[!is.na(md$xml_tumor_tissue_site)]
+
+tcga_meta2 = md2[md2$xml_tumor_tissue_site %in% tiss,]
+actual = actual[md2$xml_tumor_tissue_site %in% tiss]
+predicted = predicted[md2$xml_tumor_tissue_site %in% tiss]
+
 
 #summarize data
 number_match <- sum(predicted==actual)
@@ -294,7 +300,10 @@ names(TCGA_summarized) <- c("sites_tested", "number_correct", "percent_correct")
 TCGA_summarized
 
 #get output for package
-predictions_tcga = as.data.frame(cbind(tcga_meta2$gdc_file_id,"tcga",actual,predicted,perc_correct))
+actual2 = as.character(md$xml_tumor_tissue_site)
+#define predicted
+predicted2 = predictions
+predictions_tcga = as.data.frame(cbind(md$gdc_file_id,"tcga",actual=actual2,predicted=predicted2,perc_correct))
 
 ## How do we do in healthy controls
 ht <- tcga_meta2$cgc_sample_sample_type=="Solid Tissue Normal" & !(is.na(tcga_meta2$cgc_sample_sample_type))

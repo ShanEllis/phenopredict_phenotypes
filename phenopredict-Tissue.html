@@ -61,7 +61,7 @@ document.addEventListener("DOMContentLoaded", function() {
 <li><a href="#build-predictor"><span class="toc-section-number">4</span> Build predictor</a></li>
 <li><a href="#test-predictor"><span class="toc-section-number">5</span> Test predictor</a></li>
 <li><a href="#extract-data"><span class="toc-section-number">6</span> Extract data</a></li>
-<li><a href="#predict-tissue-in-gtex"><span class="toc-section-number">7</span> Predict Tissue in GTEx</a></li>
+<li><a href="#predict-tissue-in-gtex-test-data"><span class="toc-section-number">7</span> Predict Tissue in GTEx: test data</a></li>
 <li><a href="#predict-tissue-in-tcga"><span class="toc-section-number">8</span> Predict Tissue in TCGA</a></li>
 <li><a href="#predict-tissue-in-sra"><span class="toc-section-number">9</span> Predict Tissue in SRA</a></li>
 <li><a href="#vignette-information"><span class="toc-section-number">10</span> Vignette information</a></li>
@@ -250,8 +250,8 @@ if(!file.exists(&quot;/dcl01/leek/data/sellis/barcoding/data/merge_test_SMTS_noc
     load(&quot;/dcl01/leek/data/sellis/barcoding/data/merge_test_SMTS_nocovars.rda&quot;)
 }</code></pre>
 </div>
-<div id="predict-tissue-in-gtex" class="section level1">
-<h1><span class="header-section-number">7</span> Predict Tissue in GTEx</h1>
+<div id="predict-tissue-in-gtex-test-data" class="section level1">
+<h1><span class="header-section-number">7</span> Predict Tissue in GTEx: test data</h1>
 <pre class="r"><code>predictions&lt;-predict_pheno(inputdata_test= merge_test, phenodata=pheno, phenotype=&quot;SMTS&quot;, covariates=NULL,type=&quot;factor&quot;, predictordata = predictor)
 # number of samples
 length(predictions)</code></pre>
@@ -298,7 +298,6 @@ tissNA = c(tiss, NA)
 # get phenotype info in order
 recount::all_metadata('TCGA') -&gt; md 
 bws = gsub('.bw','', md$bigwig_file)
-md2 = md[!is.na(md$xml_tumor_tissue_site),]
 
 if(!file.exists(&quot;/dcl01/leek/data/sellis/barcoding/data/TCGA_Tissue_inputdata.rda&quot;)) {
 
@@ -321,17 +320,13 @@ if(!file.exists(&quot;/dcl01/leek/data/sellis/barcoding/data/TCGA_Tissue_inputda
         covmat = covmat[,colnames(covmat) %in% tolower(bws)]
 
         #put data on a log2 scale
-        dm = log2(covmat[,!is.na(md$xml_tumor_tissue_site)]+1)
+        dm = log2(covmat+1)
     }
-    ## only include samples with tissues included in GTEx
-    ### Keep only the good SRA
-    tiss_in_gtex = md2$xml_tumor_tissue_site %in% tiss
-    tcgaGene = dm[,tiss_in_gtex]
-    tcga_meta2 = md2[tiss_in_gtex,]
+
 
 
     TCGA_inputdata=c()
-    TCGA_inputdata$covmat &lt;- tcgaGene
+    TCGA_inputdata$covmat &lt;- dm
     TCGA_inputdata$regiondata &lt;- predictor$regiondata
 
       ov &lt;- findOverlaps(predictor$regiondata,TCGA_inputdata$regiondata)
@@ -340,7 +335,7 @@ if(!file.exists(&quot;/dcl01/leek/data/sellis/barcoding/data/TCGA_Tissue_inputda
       TCGA_inputdata$regiondata &lt;- TCGA_inputdata$regiondata[index_regions]
       TCGA_inputdata$covmat &lt;- TCGA_inputdata$covmat[index_regions,]
 
-      save(TCGA_inputdata, tcga_meta2, file=&quot;/dcl01/leek/data/sellis/barcoding/data/TCGA_Tissue_inputdata.rda&quot;)
+      save(TCGA_inputdata, md, file=&quot;/dcl01/leek/data/sellis/barcoding/data/TCGA_Tissue_inputdata.rda&quot;)
 }else{
     load(&quot;/dcl01/leek/data/sellis/barcoding/data/TCGA_Tissue_inputdata.rda&quot;)
 }
@@ -348,10 +343,20 @@ if(!file.exists(&quot;/dcl01/leek/data/sellis/barcoding/data/TCGA_Tissue_inputda
 predictions&lt;-predict_pheno(inputdata_test= TCGA_inputdata, phenodata=pheno, phenotype=&quot;SMTS&quot;, covariates=NULL,type=&quot;factor&quot;, predictordata = predictor)
 # number of samples
 length(predictions)</code></pre>
-<pre><code>## [1] 7318</code></pre>
-<pre class="r"><code>actual = as.character(tcga_meta2$xml_tumor_tissue_site)
+<pre><code>## [1] 11284</code></pre>
+<pre class="r"><code>actual = as.character(md$xml_tumor_tissue_site)
 #define predicted
 predicted = predictions
+
+## only assess accuraccy samples with tissues included in GTEx
+md2 = md[!is.na(md$xml_tumor_tissue_site),]
+actual = actual[!is.na(md$xml_tumor_tissue_site)]
+predicted = predicted[!is.na(md$xml_tumor_tissue_site)]
+
+tcga_meta2 = md2[md2$xml_tumor_tissue_site %in% tiss,]
+actual = actual[md2$xml_tumor_tissue_site %in% tiss]
+predicted = predicted[md2$xml_tumor_tissue_site %in% tiss]
+
 
 #summarize data
 number_match &lt;- sum(predicted==actual)
@@ -361,12 +366,15 @@ number_sites = nrow(predictor$coefEsts)
 TCGA_summarized = c(number_sites,number_match, perc_correct)
 names(TCGA_summarized) &lt;- c(&quot;sites_tested&quot;, &quot;number_correct&quot;, &quot;percent_correct&quot;)
  
- #compare predictions to known sex
- TCGA_summarized</code></pre>
+#compare predictions to known sex
+TCGA_summarized</code></pre>
 <pre><code>##    sites_tested  number_correct percent_correct 
 ##    2281.0000000    5618.0000000       0.7676961</code></pre>
 <pre class="r"><code>#get output for package
-predictions_tcga = as.data.frame(cbind(tcga_meta2$gdc_file_id,&quot;tcga&quot;,actual,predicted,perc_correct))
+actual2 = as.character(md$xml_tumor_tissue_site)
+#define predicted
+predicted2 = predictions
+predictions_tcga = as.data.frame(cbind(md$gdc_file_id,&quot;tcga&quot;,actual=actual2,predicted=predicted2,perc_correct))
 
 ## How do we do in healthy controls
 ht &lt;- tcga_meta2$cgc_sample_sample_type==&quot;Solid Tissue Normal&quot; &amp; !(is.na(tcga_meta2$cgc_sample_sample_type))
@@ -517,7 +525,7 @@ predictions&lt;-predict_pheno(inputdata_test= SRA_inputdata, phenodata=pheno, ph
 length(predictions)</code></pre>
 <pre><code>## [1] 49657</code></pre>
 <pre class="r"><code>## test for accuracy
-actual_all = sra_meta$sharq_beta_tissue
+actual_all = tools::toTitleCase(sra_meta$sharq_beta_tissue)
 #define predicted
 predicted_all = predictions
 
@@ -525,7 +533,7 @@ predicted_all = predictions
 keep = !is.na(sra_meta$sharq_beta_tissue) &amp; sra_meta$sharq_beta_tissue %in% tolower(tiss)
 actual = actual_all[keep]
 predicted = predicted_all[keep]
-predicted = tolower(predicted)
+predicted = predicted
 length(predicted)</code></pre>
 <pre><code>## [1] 8951</code></pre>
 <pre class="r"><code>#summarize data
@@ -592,64 +600,65 @@ predictions_Tissue$accuracy_tissue &lt;- as.numeric(predictions_Tissue$accuracy_
 save(predictions_Tissue, file=&quot;/dcl01/leek/data/sellis/barcoding/output/predictions_Tissue.rda&quot;)</code></pre>
 <pre class="r"><code>## Get required information for the plots
 if(!file.exists('/dcl01/leek/data/sellis/barcoding/output/Tissue_regions.rda')) {   
-    library(minfi)
-  txdb &lt;- GenomicFeatures::makeTxDbFromGFF('ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_25/gencode.v25.annotation.gff3.gz', format = 'gff3', organism = 'Homo sapiens')
-    tx&lt;-annotateTranscripts(txdb, annotationPackage = NULL, by = c(&quot;gene&quot;), codingOnly=FALSE, verbose = TRUE, requireAnnotation = FALSE)
-    output&lt;-matchGenes(predictor$regiondata, tx, type = c(&quot;any&quot;, &quot;fiveprime&quot;), promoterDist = 2500, skipExons = FALSE, verbose = TRUE)
-  table(output$description)
-    save(output, file= &quot;/dcl01/leek/data/sellis/barcoding/output/Tissue_regions.rda&quot;)
+library(bumphunter)
+txdb &lt;- makeTxDbFromGFF('ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_25/gencode.v25.annotation.gff3.gz', format = 'gff3', organism = 'Homo sapiens')
+tx&lt;-annotateTranscripts(txdb)
+annotation &lt;- matchGenes(x = predictor$regiondata, subject = tx)
+
+table(annotation$description)
+    save(annotation, file= &quot;/dcl01/leek/data/sellis/barcoding/output/Tissue_regions.rda&quot;)
 }else{
     load('/dcl01/leek/data/sellis/barcoding/output/Tissue_regions.rda')
     table(output$description)
 }</code></pre>
 <pre><code>## 
 ##                 upstream                 promoter              overlaps 5' 
-##                      198                       56                       46 
+##                        0                        0                        3 
 ##            inside intron              inside exon           covers exon(s) 
-##                      976                      626                       15 
+##                        2                        7                        1 
 ##   overlaps exon upstream overlaps exon downstream       overlaps two exons 
-##                       14                       13                        0 
+##                        7                        2                        0 
 ##              overlaps 3'              close to 3'               downstream 
-##                       23                       21                      292 
+##                        2                        0                       13 
 ##                   covers 
-##                        1</code></pre>
+##                        3</code></pre>
 </div>
 <div id="vignette-information" class="section level1">
 <h1><span class="header-section-number">10</span> Vignette information</h1>
 <pre class="r"><code>## Time spent creating this report:
 diff(c(startTime, Sys.time()))</code></pre>
-<pre><code>## Time difference of 47.16861 mins</code></pre>
+<pre><code>## Time difference of 11.94021 mins</code></pre>
 <pre class="r"><code>## Date this report was generated
 message(Sys.time())</code></pre>
-<pre><code>## 2017-10-03 14:52:24</code></pre>
+<pre><code>## 2017-10-17 12:56:10</code></pre>
 <pre class="r"><code>## Reproducibility info
 options(width = 120)
 devtools::session_info()</code></pre>
 <pre><code>## Session info ----------------------------------------------------------------------------------------------------------</code></pre>
 <pre><code>##  setting  value                                      
-##  version  R version 3.4.2 Patched (2017-10-03 r73431)
+##  version  R version 3.4.2 Patched (2017-10-12 r73554)
 ##  system   x86_64, linux-gnu                          
 ##  ui       X11                                        
 ##  language (EN)                                       
 ##  collate  en_US.UTF-8                                
 ##  tz       &lt;NA&gt;                                       
-##  date     2017-10-03</code></pre>
+##  date     2017-10-17</code></pre>
 <pre><code>## Packages --------------------------------------------------------------------------------------------------------------</code></pre>
 <pre><code>##  package              * version  date       source         
 ##  acepack                1.4.1    2016-10-29 CRAN (R 3.4.0) 
 ##  annotate               1.55.0   2017-05-25 Bioconductor   
-##  AnnotationDbi          1.39.3   2017-09-05 Bioconductor   
+##  AnnotationDbi          1.39.4   2017-10-13 Bioconductor   
 ##  assertthat             0.2.0    2017-04-11 CRAN (R 3.4.0) 
 ##  backports              1.1.1    2017-09-25 CRAN (R 3.4.2) 
-##  base                 * 3.4.2    2017-10-03 local          
+##  base                 * 3.4.2    2017-10-17 local          
 ##  base64                 2.0      2016-05-10 CRAN (R 3.4.0) 
 ##  base64enc              0.1-3    2015-07-28 CRAN (R 3.4.0) 
 ##  beanplot               1.2      2014-09-19 CRAN (R 3.4.0) 
 ##  bindr                  0.1      2016-11-13 CRAN (R 3.4.1) 
-##  bindrcpp               0.2      2017-06-17 CRAN (R 3.4.1) 
+##  bindrcpp             * 0.2      2017-06-17 CRAN (R 3.4.1) 
 ##  Biobase              * 2.37.2   2017-05-25 Bioconductor   
-##  BiocGenerics         * 0.23.2   2017-09-30 Bioconductor   
-##  BiocParallel           1.11.9   2017-10-01 Bioconductor   
+##  BiocGenerics         * 0.23.3   2017-10-08 Bioconductor   
+##  BiocParallel         * 1.11.11  2017-10-13 Bioconductor   
 ##  BiocStyle            * 2.4.1    2017-08-02 Bioconductor   
 ##  biomaRt                2.33.4   2017-08-03 Bioconductor   
 ##  Biostrings             2.45.4   2017-08-22 Bioconductor   
@@ -659,27 +668,27 @@ devtools::session_info()</code></pre>
 ##  blob                   1.1.0    2017-06-17 CRAN (R 3.4.1) 
 ##  broom                  0.4.2    2017-02-13 CRAN (R 3.4.0) 
 ##  BSgenome               1.45.3   2017-09-16 Bioconductor   
-##  bumphunter             1.17.2   2017-05-25 Bioconductor   
-##  caret                  6.0-77   2017-09-07 cran (@6.0-77) 
+##  bumphunter             1.16.0   2017-10-03 Bioconductor   
+##  caret                * 6.0-77   2017-09-07 cran (@6.0-77) 
 ##  cellranger             1.1.0    2016-07-27 CRAN (R 3.4.0) 
 ##  checkmate              1.8.4    2017-09-25 CRAN (R 3.4.2) 
 ##  class                  7.3-14   2015-08-30 CRAN (R 3.4.2) 
 ##  cluster                2.0.6    2017-03-10 CRAN (R 3.4.2) 
 ##  codetools              0.2-15   2016-10-05 CRAN (R 3.4.2) 
 ##  colorspace             1.3-2    2016-12-14 CRAN (R 3.4.0) 
-##  commonmark             1.2      2017-03-01 CRAN (R 3.4.0) 
-##  compiler               3.4.2    2017-10-03 local          
-##  crayon                 1.3.2    2016-06-28 CRAN (R 3.4.0) 
-##  curl                   2.8.1    2017-07-21 CRAN (R 3.4.1) 
+##  commonmark             1.4      2017-09-01 CRAN (R 3.4.2) 
+##  compiler               3.4.2    2017-10-17 local          
+##  crayon                 1.3.4    2017-09-16 CRAN (R 3.4.2) 
+##  curl                   3.0      2017-10-06 CRAN (R 3.4.2) 
 ##  CVST                   0.2-1    2013-12-10 cran (@0.2-1)  
-##  data.table             1.10.4   2017-02-01 CRAN (R 3.4.0) 
-##  datasets             * 3.4.2    2017-10-03 local          
+##  data.table             1.10.4-2 2017-10-12 CRAN (R 3.4.2) 
+##  datasets             * 3.4.2    2017-10-17 local          
 ##  DBI                    0.7      2017-06-18 CRAN (R 3.4.1) 
-##  ddalpha                1.2.1    2016-10-10 cran (@1.2.1)  
+##  ddalpha                1.3.1    2017-09-27 CRAN (R 3.4.2) 
 ##  DelayedArray         * 0.3.21   2017-09-28 Bioconductor   
 ##  DEoptimR               1.0-8    2016-11-19 CRAN (R 3.4.0) 
-##  derfinder              1.11.9   2017-08-27 Bioconductor   
-##  derfinderHelper        1.11.3   2017-08-27 Bioconductor   
+##  derfinder              1.11.10  2017-10-13 Bioconductor   
+##  derfinderHelper        1.11.4   2017-10-13 Bioconductor   
 ##  desc                   1.1.1    2017-08-03 CRAN (R 3.4.1) 
 ##  devtools             * 1.13.3   2017-08-02 CRAN (R 3.4.1) 
 ##  digest                 0.6.12   2017-01-27 CRAN (R 3.4.0) 
@@ -688,6 +697,7 @@ devtools::session_info()</code></pre>
 ##  downloader             0.4      2015-07-09 CRAN (R 3.4.0) 
 ##  dplyr                * 0.7.4    2017-09-28 CRAN (R 3.4.2) 
 ##  DRR                    0.0.2    2016-09-15 cran (@0.0.2)  
+##  e1071                  1.6-8    2017-02-02 CRAN (R 3.4.0) 
 ##  evaluate               0.10.1   2017-06-24 CRAN (R 3.4.1) 
 ##  forcats                0.2.0    2017-01-23 CRAN (R 3.4.1) 
 ##  foreach                1.4.3    2015-10-13 CRAN (R 3.4.0) 
@@ -695,19 +705,19 @@ devtools::session_info()</code></pre>
 ##  Formula                1.2-2    2017-07-10 CRAN (R 3.4.1) 
 ##  gdata                  2.18.0   2017-06-06 CRAN (R 3.4.1) 
 ##  genefilter             1.59.0   2017-05-25 Bioconductor   
-##  GenomeInfoDb         * 1.13.4   2017-07-21 Bioconductor   
+##  GenomeInfoDb         * 1.13.5   2017-10-06 Bioconductor   
 ##  GenomeInfoDbData       0.99.1   2017-07-21 Bioconductor   
 ##  GenomicAlignments      1.13.6   2017-09-16 Bioconductor   
-##  GenomicFeatures        1.29.11  2017-09-21 Bioconductor   
+##  GenomicFeatures        1.29.13  2017-10-13 Bioconductor   
 ##  GenomicFiles           1.13.10  2017-07-21 Bioconductor   
-##  GenomicRanges        * 1.29.14  2017-09-16 Bioconductor   
+##  GenomicRanges        * 1.29.15  2017-10-06 Bioconductor   
 ##  GEOquery               2.45.2   2017-09-29 Bioconductor   
 ##  ggplot2              * 2.2.1    2016-12-30 CRAN (R 3.4.0) 
 ##  glue                   1.1.1    2017-06-21 CRAN (R 3.4.1) 
 ##  gower                  0.1.2    2017-02-23 cran (@0.1.2)  
-##  graphics             * 3.4.2    2017-10-03 local          
-##  grDevices            * 3.4.2    2017-10-03 local          
-##  grid                   3.4.2    2017-10-03 local          
+##  graphics             * 3.4.2    2017-10-17 local          
+##  grDevices            * 3.4.2    2017-10-17 local          
+##  grid                   3.4.2    2017-10-17 local          
 ##  gridExtra              2.3      2017-09-09 CRAN (R 3.4.1) 
 ##  gtable                 0.2.0    2016-02-26 CRAN (R 3.4.0) 
 ##  gtools                 3.5.0    2015-05-29 CRAN (R 3.4.0) 
@@ -720,23 +730,22 @@ devtools::session_info()</code></pre>
 ##  httr                   1.3.1    2017-08-20 CRAN (R 3.4.1) 
 ##  illuminaio             0.19.0   2017-05-25 Bioconductor   
 ##  ipred                  0.9-6    2017-03-01 CRAN (R 3.4.0) 
-##  IRanges              * 2.11.17  2017-09-22 Bioconductor   
+##  IRanges              * 2.11.19  2017-10-09 Bioconductor   
 ##  iterators              1.0.8    2015-10-13 CRAN (R 3.4.0) 
 ##  jsonlite               1.5      2017-06-01 CRAN (R 3.4.1) 
 ##  kernlab                0.9-25   2016-10-03 CRAN (R 3.4.0) 
 ##  knitr                  1.17     2017-08-10 CRAN (R 3.4.1) 
-##  lattice                0.20-35  2017-03-25 CRAN (R 3.4.2) 
+##  labeling               0.3      2014-08-23 CRAN (R 3.4.0) 
+##  lattice              * 0.20-35  2017-03-25 CRAN (R 3.4.2) 
 ##  latticeExtra           0.6-28   2016-02-09 CRAN (R 3.4.0) 
 ##  lava                   1.5.1    2017-09-27 CRAN (R 3.4.2) 
 ##  lazyeval               0.2.0    2016-06-12 CRAN (R 3.4.0) 
-##  limma                  3.33.12  2017-10-01 Bioconductor   
+##  limma                  3.33.14  2017-10-13 Bioconductor   
 ##  locfit                 1.5-9.1  2013-04-20 CRAN (R 3.4.0) 
 ##  lubridate              1.6.0    2016-09-13 CRAN (R 3.4.1) 
 ##  magrittr               1.5      2014-11-22 CRAN (R 3.4.0) 
 ##  MASS                   7.3-47   2017-02-26 CRAN (R 3.4.2) 
-##  Matrix                 1.2-11   2017-08-21 CRAN (R 3.4.2) 
-##  matrixStats          * 0.52.2   2017-04-14 CRAN (R 3.4.0) 
-##  [ reached getOption(&quot;max.print&quot;) -- omitted 76 rows ]</code></pre>
+##  [ reached getOption(&quot;max.print&quot;) -- omitted 83 rows ]</code></pre>
 <p>Code for creating the vignette</p>
 <pre class="r"><code>## Create the vignette
 library('rmarkdown')
