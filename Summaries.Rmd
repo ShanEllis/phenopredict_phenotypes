@@ -33,7 +33,8 @@ bright= c(red=rgb(222,45,38, maxColorValue=255), #de2d26
         purple=rgb(148,12,232, maxColorValue=255)) #940ce8  
 
 ## load colors for when we need more than what is in bright
-load("/dcl01/leek/data/sellis/barcoding/plots/colors_44.rda")
+load("/dcl01/leek/data/sellis/barcoding/plots/colors31.rda")
+colors31 = as.character(colors31)
 ```
 
 ```{r load-data, echo=FALSE, message=FALSE, warning = FALSE}
@@ -148,7 +149,11 @@ for(phenot in phenotypes){
 		reported <- droplevels(reported)
 		predicted <- droplevels(predicted)
 
-		tiss<-bind_cols(reported=reported,predicted=predicted)
+		keep <- reported %in% names(table(predicted))
+		reported <- reported[keep]
+		predicted <- predicted[keep]
+
+ 		tiss<-bind_cols(reported=reported,predicted=predicted)
 	}
 	
 	xtab <- table(predicted,reported)
@@ -217,6 +222,7 @@ A summary of sex across recount including:
 ```{r 'sex', message = FALSE, warning = FALSE, echo = FALSE, fig.width = 8, fig.height = 8}
 a<-df %>% select(predicted_sex) %>% table() %>% melt()
 colnames(a) <- c("predicted","Count")
+a
 
 ggplot(as.data.frame(a), aes(x=predicted, y = Count)) + 
 	geom_bar(stat="identity")+
@@ -298,6 +304,7 @@ A summary of tissue across recount including:
 ## overall breakdown of predicted tissue
 a<-tiss %>% select(predicted) %>% table() %>% melt()
 colnames(a) <- c("predicted_tissue","Count")
+a 
 
 ggplot(as.data.frame(a), aes(x=predicted_tissue, y = Count)) + 
 	geom_bar(stat="identity")+
@@ -309,9 +316,10 @@ ggplot(as.data.frame(a), aes(x=predicted_tissue, y = Count)) +
 
 
 ## samples discordant or concordant for tissue
-a<- tiss %>% mutate(new=(as.character(predicted)==as.character(reported))) %>% group_by(predicted) %>% count(new)
+a<- tiss %>% mutate(new=(as.character(predicted)==as.character(reported)))
 a$new[a$new=="TRUE"] <- "concordant"
 a$new[a$new=="FALSE"] <- "discordant"
+a <- a %>% group_by(new) %>% dplyr::count(predicted,new)
 
 ggplot(as.data.frame(a), aes(x=predicted, y = n, fill=new)) + 
 	geom_bar(stat="identity")+
@@ -323,23 +331,26 @@ ggplot(as.data.frame(a), aes(x=predicted, y = n, fill=new)) +
 
 
 ## barplot colored by mismatch
-  	ggplot(as.data.frame(xtab_tissue), aes(x=predicted, y = Freq, fill=reported)) + 
+b <- xtab_tissue[,dimnames(xtab_tissue)$reported %in% dimnames(xtab_tissue)$predicted]  	
+  	ggplot(as.data.frame(b), aes(x=predicted, y = Freq, fill=reported)) + 
 	geom_bar(stat="identity")+
 	labs(title="Tissue")+
-	scale_fill_manual(values=colors)+
+	scale_fill_manual(values=colors31)+
 	theme_bw()+
   	theme(plot.title = element_text(size=18,hjust = 0.5),text = element_text(size=12), panel.border = element_blank(), panel.grid.major = element_blank(),
                    panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=1),axis.text=element_text(colour="black", size=12))
 #
 # barplot colored by mismatch (proportion)
-  		colors2 = colors
+  		colors2 = colors31
 		labl <- "Tissue"
 		right <- 73
 		left <- 1
 		nc = 2
 	par(mar=c(8.1, 4.1, 4.1, 18.1))
 
-  	barplot(x1, 
+b <- x1[dimnames(x1)$reported %in% dimnames(x1)$predicted,]  	
+
+  	barplot(b, 
 		col=colors2, 
 		las=2,
 		legend.text=TRUE,
@@ -359,7 +370,7 @@ ggplot(as.data.frame(a), aes(x=predicted, y = n, fill=new)) +
 	    )
 	)
 
-ggplot(data = as.data.frame(x1), aes(x=predicted, y=reported, fill=Freq)) + 
+  ggplot(data = as.data.frame(b), aes(x=predicted, y=reported, fill=Freq)) + 
   geom_tile()+
   theme(legend.title=element_blank(),text = element_text(size=14),plot.title = element_text(size=24,hjust = 0.5),axis.text.x=element_text(angle=90,hjust=1))+
   labs(title="Tissue")
@@ -379,6 +390,7 @@ A summary of sequencing strategy across recount including:
 ```{r 'sequencingstrategy', message = FALSE, warning = FALSE, echo = FALSE, fig.width = 8, fig.height = 8}
 a<-df %>% select(predicted_sequencingstrategy) %>% table() %>% melt()
 colnames(a) <- c("predicted","Count")
+a 
 
 ggplot(as.data.frame(a), aes(x=predicted, y = Count)) + 
 	geom_bar(stat="identity")+
@@ -444,6 +456,7 @@ A summary of sample source across recount including:
 
 a<-df %>% select(predicted_samplesource) %>% table() %>% melt()
 colnames(a) <- c("predicted","Count")
+a 
 
 ggplot(as.data.frame(a), aes(x=predicted, y = Count)) + 
 	geom_bar(stat="identity")+

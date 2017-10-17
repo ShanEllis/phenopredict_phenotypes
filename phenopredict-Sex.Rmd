@@ -239,7 +239,6 @@ regions = predictor$regiondata
 # get phenotype info in order
 recount::all_metadata('TCGA') -> md 
 bws = gsub('.bw','', md$bigwig_file)
-md2 = md[!is.na(md$gdc_cases.demographic.gender),]
 
 if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_Sex_inputdata.rda")) {
 
@@ -264,12 +263,10 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_Sex_inputdata.rda")
     covmat = covmat[,colnames(covmat) %in% tolower(bws)]
 
     #put data on a log2 scale
-    dm = log2(covmat[,!is.na(md$gdc_cases.demographic.gender)]+1)
+    dm = log2(covmat+1)
   }else{
     message("metadata and expression data not in same order")
   }
-
-  tcga_meta2 = md2
 
   TCGA_inputdata=c()
   TCGA_inputdata$covmat <- dm
@@ -281,7 +278,7 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_Sex_inputdata.rda")
     TCGA_inputdata$regiondata <- TCGA_inputdata$regiondata[index_regions]
     TCGA_inputdata$covmat <- TCGA_inputdata$covmat[index_regions,]
 
-    save(TCGA_inputdata, tcga_meta2, file="/dcl01/leek/data/sellis/barcoding/data/TCGA_Sex_inputdata.rda")
+    save(TCGA_inputdata, md, file="/dcl01/leek/data/sellis/barcoding/data/TCGA_Sex_inputdata.rda")
 }else{
   load("/dcl01/leek/data/sellis/barcoding/data/TCGA_Sex_inputdata.rda")
 }
@@ -291,9 +288,11 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_Sex_inputdata.rda")
   length(predictions)
 
 
-  actual_all = as.character(md2$gdc_cases.demographic.gender)
+  md2 = md[!is.na(md$gdc_cases.demographic.gender),]
+
+  actual_all = as.character(md$gdc_cases.demographic.gender)
   ## remove NAs from actual
-  keep = !is.na(predicted)
+  keep = !is.na(md$gdc_cases.demographic.gender)
   actual = actual_all[keep]
   #define predicted
   predicted = predictions[keep]
@@ -312,7 +311,7 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/TCGA_Sex_inputdata.rda")
  TCGA_summarized
 
  #get output for package
-predictions_tcga = as.data.frame(cbind(md2$gdc_file_id,"tcga",actual=actual_all,predicted=predictions,perc_correct))
+predictions_tcga = as.data.frame(cbind(md$gdc_file_id,"tcga",actual=actual_all,predicted=predictions,perc_correct))
 ```
 
 
@@ -498,7 +497,6 @@ save(predictions_Sex, file="/dcl01/leek/data/sellis/barcoding/output/predictions
 ```{r 'region-information', message = FALSE, warning = FALSE}
 ## Get required information for the plots
 if(!file.exists("/dcl01/leek/data/sellis/barcoding/output/Sex_regions.rda")){
-```
 library(bumphunter)
 txdb <- makeTxDbFromGFF('ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_25/gencode.v25.annotation.gff3.gz', format = 'gff3', organism = 'Homo sapiens')
 tx<-annotateTranscripts(txdb)
