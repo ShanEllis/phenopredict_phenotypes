@@ -78,7 +78,7 @@ A big picture summary of the data included in recount including:
 
 ```{r 'overview', message = FALSE, echo = FALSE, warning = FALSE}
 ## number of samples from data source
-(dataset_summ <- df %>%  group_by(dataset) %>% select(dataset) %>% summarise(Count = n()))
+dataset_summ <- df %>%  group_by(dataset) %>% select(dataset) %>% summarise(Count = n())
 
 ## Data set sample size
 ggplot(data = dataset_summ, aes(x=dataset, y = Count,label = Count)) + 
@@ -92,7 +92,7 @@ ggplot(data = dataset_summ, aes(x=dataset, y = Count,label = Count)) +
 
 ## number of projects (in SRA)
 length(unique(sra_meta$project))
-(proj_summ <- sra_meta %>%  group_by(project) %>% select(project) %>% summarise(Count = n()))
+proj_summ <- sra_meta %>%  group_by(project) %>% select(project) %>% summarise(Count = n())
 
 ## summary of number of samples per project
 ggplot(data = proj_summ, aes(Count)) + 
@@ -103,11 +103,7 @@ ggplot(data = proj_summ, aes(Count)) +
 		panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text=element_text(colour="black"))
 ```
 
-# Confusion Matrices
-
-To compare predicted phenotypes with reported phenotypres, confusion matrices had to be calculated for each predicted phenotype: sex, tissue, sample source, and sequencing strategy. Below, predicted phenotypes are along side. Reported phenotypes are along top of tables.
-
-```{r 'confusion_matrix_analysis', echo=FALSE, message = FALSE, warning = FALSE, results="asis"}
+```{r 'confusion_matrix_analysis', echo=FALSE, message = FALSE, warning = FALSE}
 phenotypes = c("sex","tissue","samplesource","sequencingstrategy")
 
 ## clean up reported sex variable a little bit
@@ -199,10 +195,10 @@ Vals_all<-cbind(Vals_tissue,Vals_sex,Vals_sequencingstrategy,Vals_samplesource)
 # summary(na.omit(Vals_all[1,]))
 # summary(na.omit(Vals_all[2,]))
 
-print(xtable(xtab_sex), comment=F, type="html")
-print(xtable(xtab_tissue_all), comment=F, type="html")
-print(xtable(xtab_samplesource), comment=F, type="html")
-print(xtable(xtab_sequencingstrategy), comment=F, type="html")
+# print(xtable(xtab_sex), comment=F, type="html")
+# print(xtable(xtab_tissue_all), comment=F, type="html")
+# print(xtable(xtab_samplesource), comment=F, type="html")
+# print(xtable(xtab_sequencingstrategy), comment=F, type="html")
 
 
 ### let's look as a percentage
@@ -210,6 +206,13 @@ x1<-as.table(apply(xtab_tissue,1,prop.table))
 x2<-as.table(apply(xtab_sex,1,prop.table))
 x3<-as.table(apply(xtab_samplesource,1,prop.table))
 x4<-as.table(apply(xtab_sequencingstrategy,1,prop.table))
+
+#Sensitivity and Specificity
+
+sens_tissue<-t(Vals_tissue) %>% melt() %>% mutate(category=gsub("tissue_","",X1))
+sens_sex<-t(Vals_sex) %>% melt() %>% mutate(category=gsub("sex_","",X1))
+sens_sequencingstrategy<-t(Vals_sequencingstrategy) %>% melt() %>% mutate(category=gsub("sequencingstrategy_","",X1))
+sens_samplesource<-t(Vals_samplesource) %>% melt() %>% mutate(category=gsub("samplesource_","",X1))
 ```
 
 # Sex
@@ -220,9 +223,10 @@ A summary of sex across recount including:
 * breakdown of predicted sex within SRA data
 * Comparison of reported sex to predicted sex (frequency)
 * Comparison of reported sex to predicted sex (proportion)
+* specificity and sensitivity for sex
 * Confusion Matrix for reported to prediced sex agreement (proportion)
 
-```{r 'sex', message = FALSE, warning = FALSE, echo = FALSE, fig.width = 8, fig.height = 8}
+```{r 'sex', message = FALSE, warning = FALSE, echo = FALSE, fig.width = 8, fig.height = 8, results="asis"}
 a<-df %>% select(predicted_sex) %>% table() %>% melt()
 colnames(a) <- c("predicted","Count")
 a
@@ -246,6 +250,18 @@ ggplot(data = sex_SRA, aes(x=predicted_sex, y = Count,label = Count)) +
     theme_bw()+
     theme(legend.title=element_blank(),plot.title = element_text(hjust = 0.5),text = element_text(size=14), panel.border = element_blank(), panel.grid.major = element_blank(),
 		panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text=element_text(colour="black"))
+
+print(xtable(t(Vals_sex)), comment=F, type="html")
+
+ggplot(sens_sex, aes(x=category, y = value, fill=X2)) + 
+	geom_bar(stat="identity",position="dodge")+
+	labs(x="",y="",title="Sex")+
+	scale_fill_manual(values=c("#940CE8","#E8790C"))+
+	theme_bw()+
+  	theme(legend.title=element_blank(), plot.title = element_text(size=16,hjust = 0.5),text = element_text(size=16), panel.border = element_blank(), panel.grid.major = element_blank(),
+                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=1),axis.text=element_text(colour="black", size=16))
+
+ print(xtable(xtab_sex), comment=F, type="html")
 
  ggplot(as.data.frame(xtab_sex), aes(x=predicted, y = Freq, fill=reported)) + 
 	geom_bar(stat="identity")+
@@ -300,9 +316,10 @@ A summary of tissue across recount including:
 * overall breakdown of concordance between predicted and reported tissue 
 * specific breakdown of concordance between predicted and reported tissue (frequency)
 * specific breakdown of concordance between predicted and reported tissue (proportion)
+* specificity and sensitivity for tissue
 * Confusion Matrix for reported to prediced tissue agreement (proportion)
 
-```{r 'tissue', message = FALSE, warning = FALSE, echo = FALSE, fig.width = 8, fig.height = 8}
+```{r 'tissue', message = FALSE, warning = FALSE, echo = FALSE, fig.width = 8, fig.height = 8, results="asis"}
 
 ## overall breakdown of predicted tissue
 a<- df %>% select(predicted_tissue) %>% table() %>% melt()
@@ -330,6 +347,16 @@ ggplot(as.data.frame(a), aes(x=predicted, y = n, fill=new)) +
 	scale_fill_manual(values=c("black","gray48"))+
 	theme_bw()+
   	theme(legend.title=element_blank(),plot.title = element_text(size=18,hjust = 0.5),text = element_text(size=16), panel.border = element_blank(), panel.grid.major = element_blank(),
+                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=1),axis.text=element_text(colour="black", size=16))
+
+print(xtable(t(Vals_tissue)), comment=F, type="html")
+
+ggplot(sens_tissue, aes(x=category, y = value, fill=X2)) + 
+	geom_bar(stat="identity",position="dodge")+
+	labs(x="",y="",title="Tissue")+
+	scale_fill_manual(values=c("#940CE8","#E8790C"))+
+	theme_bw()+
+  	theme(legend.title=element_blank(), plot.title = element_text(size=16,hjust = 0.5),text = element_text(size=16), panel.border = element_blank(), panel.grid.major = element_blank(),
                    panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=1),axis.text=element_text(colour="black", size=16))
 
 
@@ -378,6 +405,8 @@ b <- x1[dimnames(x1)$reported %in% dimnames(x1)$predicted,]
   theme(legend.title=element_blank(),text = element_text(size=14),plot.title = element_text(size=24,hjust = 0.5),axis.text.x=element_text(angle=90,hjust=1))+
   labs(title="Tissue")
 
+print(xtable(xtab_tissue_all), comment=F, type="html")
+
 dimnames(xtab_tissue_all)$reported[42] <- "Cutaneous or Subcutaneous Tissue"
 ## confusion matrix for all reported tissues, not just the ones we had the chance to get right
   ggplot(data = as.data.frame(xtab_tissue_all), aes(x=predicted, y=reported, fill=Freq)) + 
@@ -394,10 +423,11 @@ A summary of sequencing strategy across recount including:
 * overall breakdown of predicted sequencing strategy across recount
 * breakdown of concordance between predicted and reported sequencing strategy (frequency)
 * breakdown of concordance between predicted and reported sequencing strategy (proportion)
+* specificity and sensitivity for sequencing strategy
 * confusion Matrix for reported to prediced sequencing strategy agreement (proportion)
 
 
-```{r 'sequencingstrategy', message = FALSE, warning = FALSE, echo = FALSE, fig.width = 8, fig.height = 8}
+```{r 'sequencingstrategy', message = FALSE, warning = FALSE, echo = FALSE, fig.width = 8, fig.height = 8, results="asis"}
 a<-df %>% select(predicted_sequencingstrategy) %>% table() %>% melt()
 colnames(a) <- c("predicted","Count")
 a 
@@ -409,6 +439,18 @@ ggplot(as.data.frame(a), aes(x=predicted, y = Count)) +
 	theme_bw()+
   	theme(plot.title = element_text(size=18,hjust = 0.5),text = element_text(size=16), panel.border = element_blank(), panel.grid.major = element_blank(),
                    panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=1),axis.text=element_text(colour="black", size=16))
+
+print(xtable(t(Vals_sequencingstrategy)), comment=F, type="html")
+
+ggplot(sens_sequencingstrategy, aes(x=category, y = value, fill=X2)) + 
+	geom_bar(stat="identity",position="dodge")+
+	labs(x="",y="",title="Sequencing Strategy")+
+	scale_fill_manual(values=c("#940CE8","#E8790C"))+
+	theme_bw()+
+  	theme(legend.title=element_blank(), plot.title = element_text(size=16,hjust = 0.5),text = element_text(size=16), panel.border = element_blank(), panel.grid.major = element_blank(),
+                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=1),axis.text=element_text(colour="black", size=16))
+
+print(xtable(xtab_sequencingstrategy), comment=F, type="html")
 
  ggplot(as.data.frame(xtab_sequencingstrategy), aes(x=predicted, y = Freq, fill=reported)) + geom_bar(stat="identity")+
 	labs(title="Sequencing Strategy")+
@@ -459,10 +501,11 @@ A summary of sample source across recount including:
 * overall breakdown of predicted sample source across recount
 * breakdown of concordance between predicted and reported sample source (frequency)
 * breakdown of concordance between predicted and reported sample source(proportion)
+* specificity and sensitivity for sample source
 * confusion Matrix for reported to prediced sample source agreement (proportion)
 
 
-```{r 'samplesource', message = FALSE, warning = FALSE, echo = FALSE, fig.width = 8, fig.height = 8}
+```{r 'samplesource', message = FALSE, warning = FALSE, echo = FALSE, fig.width = 8, fig.height = 8, results="asis"}
 
 a<-df %>% select(predicted_samplesource) %>% table() %>% melt()
 colnames(a) <- c("predicted","Count")
@@ -475,6 +518,19 @@ ggplot(as.data.frame(a), aes(x=predicted, y = Count)) +
 	theme_bw()+
   	theme(plot.title = element_text(size=18,hjust = 0.5),text = element_text(size=16), panel.border = element_blank(), panel.grid.major = element_blank(),
                    panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=1),axis.text=element_text(colour="black", size=16))
+
+ print(xtable(t(Vals_samplesource)), comment=F, type="html")
+
+
+ggplot(sens_samplesource, aes(x=category, y = value, fill=X2)) + 
+	geom_bar(stat="identity",position="dodge")+
+	labs(x="",y="",title="Sample Source")+
+	scale_fill_manual(values=c("#940CE8","#E8790C"))+
+	theme_bw()+
+  	theme(legend.title=element_blank(), plot.title = element_text(size=16,hjust = 0.5),text = element_text(size=16), panel.border = element_blank(), panel.grid.major = element_blank(),
+                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=1),axis.text=element_text(colour="black", size=16))
+
+print(xtable(xtab_samplesource), comment=F, type="html")
 
  ggplot(as.data.frame(xtab_samplesource), aes(x=predicted, y = Freq, fill=reported)) + geom_bar(stat="identity")+
 	labs(title="Sample Source")+scale_fill_manual(values=c("#FFDE0D", "#FF6699", "gray84"))+
