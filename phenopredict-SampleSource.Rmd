@@ -41,9 +41,9 @@ library('BiocParallel')
             purple=rgb(148,12,232, maxColorValue=255)) #940ce8  
 ```
 
-# Select regions from SRA training data
+# Filter regions from SRA training data
 
-```{r 'select-regions', message = FALSE, warning = FALSE}
+```{r 'filter-regions', message = FALSE, warning = FALSE}
 	  #### SRA data [generated in merge_bwtool_by_chunk.R]
 	  ## which chunk regions are in [chunk_grp]
 	  load('/dcl01/leek/data/sellis/barcoding/data/chunk_grp.Rdata')
@@ -170,7 +170,7 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/SRA_inputdata_SampleSour
 
 
 	      ## Select regions associated with LibraryPrep
-   		 inputdata<-select_regions(expression=sra_training, regiondata=regions_subset ,phenodata=sra_meta_training_noNAs, phenotype=phenot, covariates=NULL,type="factor", numRegions=40)
+   		 inputdata<-filter_regions(expression=sra_training, regiondata=regions_subset ,phenodata=sra_meta_training_noNAs, phenotype=phenot, covariates=NULL,type="factor", numRegions=40)
 
    		new<-extract_data(newexpression=sra_test, newregiondata=regions_subset, predictordata=inputdata)
 
@@ -196,7 +196,7 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/SRA_inputdata_SampleSour
 	  load('/dcl01/leek/data/sellis/barcoding/data/SRA_inputdata_SampleSource.Rdata')
 	}
 
-# taking a look at output of select_regions)
+# taking a look at output of filter_regions)
 dim(merge_input$covmat)
 merge_input$regiondata
 

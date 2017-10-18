@@ -88,9 +88,9 @@ sra_meta = left_join(as.data.frame(sra_meta),pd,by=c("run"="Run","sample"="Sampl
  sra_meta_test <<- sra_meta[!keep,]
 ```
 
-# Select regions from training data
+# Filter regions from training data
 
-```{r 'select-regions', message = FALSE, warning = FALSE}
+```{r 'filter-regions', message = FALSE, warning = FALSE}
 if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/SRA_inputdata_SequencingStrategy.Rdata")){
 
 	xx <- lapply(chunk_name, function(chunk_name) {
@@ -122,7 +122,7 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/SRA_inputdata_Sequencing
 		regions_subset = regions_subset[tokeep]
 
 	      ## Select regions associated with LibraryPrep
-   		 inputdata<-select_regions(expression=sra_training, regiondata=regions_subset ,phenodata=sra_meta_training, phenotype=phenot, covariates=NULL,type="factor", numRegions=10)
+   		 inputdata<-filter_regions(expression=sra_training, regiondata=regions_subset ,phenodata=sra_meta_training, phenotype=phenot, covariates=NULL,type="factor", numRegions=10)
 
    		new<-extract_data(newexpression=sra_test, newregiondata=regions_subset, predictordata=inputdata)
     	inputdata$sra_test <- new
@@ -145,7 +145,7 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/SRA_inputdata_Sequencing
 	  load('/dcl01/leek/data/sellis/barcoding/data/SRA_inputdata_SequencingStrategy.Rdata')
 	}
 
-# taking a look at output of select_regions)
+# taking a look at output of filter_regions)
 dim(merge_input$covmat)
 merge_input$regiondata
 

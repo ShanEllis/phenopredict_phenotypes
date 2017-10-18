@@ -18,6 +18,7 @@ startTime <- Sys.time()
 ```{r load-packages, message = FALSE, warning = FALSE}
 ## load libraries
 library(devtools)
+# install_github("leekgroup/phenopredict")
 document("/users/sellis/phenopredict")
 library('phenopredict')
 library(rtracklayer)
@@ -37,8 +38,8 @@ library('BiocParallel')
             purple=rgb(148,12,232, maxColorValue=255)) #940ce8  
 ```
 
-# Load data and select regions
-```{r 'load-data-select-regions', message = FALSE, warning = FALSE}
+# Load data and filter regions
+```{r 'load-data-filter-regions', message = FALSE, warning = FALSE}
 load("/dcl01/leek/data/sellis/barcoding/data/sample_individuals.Rdata")
 load("/dcl01/leek/data/sellis/barcoding/data/rda/gtexmetadata.rda")
 gtex_meta = gtexmetadata
@@ -87,7 +88,7 @@ nrow(cm)
 # number of samples included in example
 ncol(cm)
 
-inputdata<-select_regions(expression=cm, regiondata=regiondata ,phenodata=pheno, phenotype="Sex",
+inputdata<-filter_regions(expression=cm, regiondata=regiondata ,phenodata=pheno, phenotype="Sex",
     covariates=NULL,type="factor",numRegions=100)
 
 assign(paste0("inputdata",'_',chrname),inputdata)
@@ -107,7 +108,7 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/merge_input_Sex_nocovars
   load("/dcl01/leek/data/sellis/barcoding/data/merge_input_Sex_nocovars.rda")
 }
 # save(merge_input, file="data/merge_input_Sex.rda")
-# taking a look at output of select(regions)
+# taking a look at output of merge_input
 dim(merge_input$covmat)
 merge_input$regiondata
 ```

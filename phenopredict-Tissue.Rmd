@@ -78,7 +78,7 @@ source("/dcs01/ajaffe/GTEX/Leek/coverageMatrix/simpleLoad/gtexLoad.R")
 
 	# number of samples included in example
 	ncol(cm)
-	inputdata<-select_regions(expression=cm, regiondata=regiondata ,phenodata=pheno, phenotype="SMTS",
+	inputdata<-filter_regions(expression=cm, regiondata=regiondata ,phenodata=pheno, phenotype="SMTS",
 	    covariates=NULL,type="factor", numRegions=100)
 	assign(paste0("inputdata",'_',chrname),inputdata)
   }
@@ -102,7 +102,7 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/merge_input_SMTS_nocovar
 } else {
 	load("/dcl01/leek/data/sellis/barcoding/data/merge_input_SMTS_nocovars.rda")
 }
-# taking a look at output of select(regions)
+# taking a look at output of merge_input
 dim(merge_input$covmat)
 merge_input$regiondata
 ```
@@ -536,6 +536,7 @@ save(predictions_Tissue, file="/dcl01/leek/data/sellis/barcoding/output/predicti
 ## Get required information for the plots
 if(!file.exists('/dcl01/leek/data/sellis/barcoding/output/Tissue_regions.rda')) {	
 library(bumphunter)
+library(GenomicFeatures)
 txdb <- makeTxDbFromGFF('ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_25/gencode.v25.annotation.gff3.gz', format = 'gff3', organism = 'Homo sapiens')
 tx<-annotateTranscripts(txdb)
 annotation <- matchGenes(x = predictor$regiondata, subject = tx)
