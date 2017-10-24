@@ -113,12 +113,17 @@ dim(merge_input$covmat)
 merge_input$regiondata
 ```
 
+# Optimize numRegions
+
+```{r optimize-numRegions, message = FALSE, warning = FALSE}
+regnum <- optimize_numRegions(inputdata=merge_input ,phenodata=pheno, phenotype="Sex", covariates=NULL,type="factor")
+```
 
 # Build predictor
 
 ```{r 'build-predictor', message = FALSE, warning = FALSE}
 predictor<-build_predictor(inputdata=merge_input ,phenodata=pheno, phenotype="Sex", 
-    covariates=NULL,type="factor",numRegions=20)
+    covariates=NULL,type="factor",numRegions=regnum$numRegions)
 # save(predictor,file="data/predictor_Sex_nocovars.rda")
 
 #number of probes used for prediction
@@ -139,8 +144,8 @@ dim(predictor$coefEsts)
 # dm  <- merge_input$covmat[index_regions,]
 # rd <- merge_input$regiondata[index_regions]
 
-dm = merge_input$covmat
-rd = merge_input$regiondata
+dm = merge_input$covmat[predictor$trainingProbes,]
+rd = merge_input$regiondata[predictor$trainingProbes]
 par(mfrow=c(2,2)) 
 toplot = c(1,2,21,22)
 for (i in toplot){
