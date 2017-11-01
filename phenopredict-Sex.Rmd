@@ -23,6 +23,8 @@ document("/users/sellis/phenopredict")
 library('phenopredict')
 library(rtracklayer)
 library(recount)
+library(splines)
+library(GenomicRanges)
 library('R.utils')
 library('BiocParallel')
 
