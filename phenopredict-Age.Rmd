@@ -143,13 +143,13 @@ actual = predictions_test$actual
 cor(predicted,actual)
 
 # library(extrafont)
-# pdf("plots/Age_parRF.pdf",family="Roboto Condensed", width=18)
+# pdf("plots/Age.pdf",family="Roboto Condensed", width=18)
  # par(mfrow=c(1,2))
  plot(predicted~actual, pch=19, main="Training Set")
  abline(lm(predicted~actual),col=bright["purple"],lwd=2)
- fit=fit = lm(predicted~actual)
- legend("topleft", bty="n", legend=paste("R^2 is", 
-        format(summary(fit)$adj.r.squared, digits=4)))
+ fit= lm(predicted~actual)
+ legend("bottomleft", bty="n", legend=paste("R^2 is", 
+        format(summary(fit)$r.squared, digits=4)))
 
 ```
 
@@ -227,9 +227,64 @@ predictions<-predict_pheno(inputdata_test=merge_test, phenodata=pheno2,covariate
  plot(predicted~actual, pch=19, main="Test Set")
  abline(lm(predicted~actual),col=bright["purple"],lwd=2)
  fit=fit = lm(predicted~actual)
- legend("topleft", bty="n", legend=paste("R^2 is", 
-        format(summary(fit)$adj.r.squared, digits=4)))
+ legend("bottomleft", bty="n", legend=paste("R^2 is", 
+        format(summary(fit)$r.squared, digits=4)))
 ```
+
+```{r paper-figure, echo=FALSE, eval=FALSE, message = FALSE, warning = FALSE}
+library(extrafont)
+pdf("plots/Age.pdf",family="Roboto Condensed", width=10, height=5)
+par(mfrow=c(1,2))
+predictions_test <-test_predictor(inputdata=merge_input ,phenodata=pheno, phenotype="AGE", 
+    covariates=NULL,type="numeric",predictordata=predictor )
+
+
+# get summary of how prediction is doing
+predictions_test$summarized
+
+# take a look
+predicted = predictions_test$predicted
+actual = predictions_test$actual
+
+ plot(predicted~actual, pch=19, main="GTEx:training")
+ abline(lm(predicted~actual),col=bright["purple"],lwd=2)
+ fit= lm(predicted~actual)
+a <- format(summary(fit)$r.squared, digits=2)
+b <- format(predictions_test$summarized[3],digits=4)
+legend("bottomleft", bty="n", legend=c(as.expression(bquote(~ R^2 ~ "= 4.6x10"^-5)),as.expression(bquote(" RMSE = 11.73")))) 
+
+
+predictions<-predict_pheno(inputdata_test=merge_test, phenodata=pheno2,covariates=NULL, phenotype="AGE",type="numeric", predictordata = predictor)
+
+#since we know the truth here, let's check and see how we're doing:
+ 
+
+  #define predicted
+  predicted = predictions
+
+  #summarize data
+    number_sites = nrow(merge_test$covmat)
+    correlation = cor(predicted, actual)
+    mean_diff = mean(abs(predicted-actual))
+        summarized = c(number_sites, correlation, mean_diff)
+        names(summarized) <- c("sites_tested", "correlation","mean_diff")
+ 
+ # compare predictions to known sex
+ summarized
+ 
+ # take a look
+ plot(predicted~actual, pch=19, main="GTEx: testing")
+ abline(lm(predicted~actual),col=bright["purple"],lwd=2)
+ fit=fit = lm(predicted~actual)
+  # legend("bottomleft", bty="n", legend=paste("R^2: ", 
+        # format(summary(fit)$r.squared, digits=2), "\n", "RMSE: ", format(summarized[3],digits=4) ))
+a <- format(summary(fit)$r.squared, digits=3)
+b <- format(summarized[3],digits=4)
+legend("bottomleft", bty="n", legend=c(as.expression(bquote(~R^2 ~ "= 8.0x10"^-5)),as.expression(bquote(" RMSE = 11.71")))) 
+
+dev.off()
+```
+
 # Vignette information
 
 ```{r reproducibility}

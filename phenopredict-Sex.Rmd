@@ -471,6 +471,11 @@ sra_meta = left_join(as.data.frame(sra_meta),pd,by=c("run"="Run","sample"="Sampl
   #get output for package
 predictions_sra =  as.data.frame(cbind(sra_meta$run,"sra",actual=as.character(actual_all),predicted=predicted,perc_correct))
 
+## find out how many projects are included in subset
+df <- predictions_sra %>% dplyr::filter(!is.na(actual))
+## 4700 samples
+
+
 ```
 
 ```{r 'plot-output', message = FALSE, warning = FALSE,fig.width=8}
