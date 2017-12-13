@@ -233,6 +233,7 @@ predictions<-predict_pheno(inputdata_test=merge_test, phenodata=pheno2,covariate
  legend("topleft", bty="n", legend=paste("R^2 is", 
         format(summary(fit)$adj.r.squared, digits=4)))
 ```
+
 # Vignette information
 
 ```{r reproducibility}
