@@ -104,7 +104,7 @@ merge_input$regiondata
 
 ## Optimize numRegions
 ```{r optimize-numRegions, message = FALSE, warning = FALSE}
-regnum <- optimize_numRegions(inputdata=merge_input ,phenodata=pheno, phenotype="HGHT", covariates=NULL,type="numeric")
+regnum <- optimize_numRegions(inputdata=merge_input ,phenodata=pheno, phenotype="HGHT", covariates=NULL,type="numeric",numRegions_set=c(10,20,30,50,100,500,700,900))
 regnum$numRegions
 ```
 
@@ -160,7 +160,9 @@ file.list.cm <- grep("cm_new_chr",ls(),val=T)
 file.list.inputdata <- grep("inputdata_chr",ls(),val=T)
 if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/test_data_HGHT_nocovars.rda")) {
     load("data/cm_new_HGHT_nocovars.Rda")
+    source("/dcl01/leek/data/sellis/barcoding/scripts/gtexLoad.R")
 
+    chrs = c("X","Y",1:22)
     for(i in 1:length(chrs)){
         chrname=paste0("chr",chrs[i])
         cat(paste0(chrname,"..."))
@@ -210,7 +212,7 @@ predictions<-predict_pheno(inputdata_test=merge_test, phenodata=pheno2,covariate
  
 
   #define predicted
-  predicted = predictions
+  predicted = as.numeric(predictions)
 
   #summarize data
     number_sites = nrow(merge_test$covmat)
@@ -248,7 +250,7 @@ Code for creating the vignette
 ```{r createVignette, eval=FALSE}
 ## Create the vignette
 library('rmarkdown')
-system.time(render('/dcl01/leek/data/sellis/barcoding/phenotype_vignettes/phenopredict-Height.Rmd', 'BiocStyle::html_document'))
+system.time(render('/dcl01/leek/data/sellis/barcoding/phenotype_vignettes/phenopredict-Height.Rmd', output_format='html_document'))
 
 ## Extract the R code
 library('knitr')
