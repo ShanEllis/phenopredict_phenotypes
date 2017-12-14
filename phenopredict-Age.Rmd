@@ -16,8 +16,8 @@ startTime <- Sys.time()
 # Load libraries
 ```{r load-packages, message = FALSE, warning = FALSE}
 library(devtools)
-# install_github("leekgroup/phenopredict")
-document("/users/sellis/phenopredict")
+install_github("leekgroup/phenopredict")
+# document("/users/sellis/phenopredict")
 library('phenopredict')
 # library('splines')
 library('GenomicRanges')
@@ -116,6 +116,8 @@ if(!file.exists("/dcl01/leek/data/sellis/barcoding/data/predictor_AGE_nocovars.r
     predictor<-build_predictor(inputdata=merge_input ,phenodata=pheno, phenotype="AGE",      
         covariates=NULL,type="numeric", numRegions=regnum$numRegions)
 
+   predictor<-build_predictor(inputdata=merge_input ,phenodata=pheno, phenotype="AGE",      
+        covariates=NULL,type="numeric", numRegions=900)
     save(predictor, file="/dcl01/leek/data/sellis/barcoding/data/predictor_AGE_nocovars.rda")
 }else{
     load("/dcl01/leek/data/sellis/barcoding/data/predictor_AGE_nocovars.rda")
@@ -150,7 +152,7 @@ cor(predicted,actual)
  plot(predicted~actual, pch=19, main="Training Set")
  abline(lm(predicted~actual),col=bright["purple"],lwd=2)
  fit= lm(predicted~actual)
- legend("bottomleft", bty="n", legend=paste("R^2 is", 
+ legend("topleft", bty="n", legend=paste("R^2 is", 
         format(summary(fit)$r.squared, digits=4)))
 
 ```
@@ -237,9 +239,7 @@ predictions<-predict_pheno(inputdata_test=merge_test, phenodata=pheno2,covariate
 
 ```{r paper-figure, echo=FALSE, eval=FALSE, message = FALSE, warning = FALSE}
 library(extrafont)
-# pdf("plots/Age.pdf",family="Roboto Condensed", width=10, height=5)
-pdf("plots/Age.pdf", width=10, height=5)
-
+pdf("plots/Age.pdf",family="Roboto Condensed", width=10, height=5)
 par(mfrow=c(1,2))
 predictions_test <-test_predictor(inputdata=merge_input ,phenodata=pheno, phenotype="AGE", 
     covariates=NULL,type="numeric",predictordata=predictor )
@@ -290,7 +290,7 @@ b <- format(summarized[3],digits=4)
 legend("bottomleft", bty="n", legend=c(as.expression(bquote(~R^2 ~ "= 9.9x10"^-3)),as.expression(bquote(" RMSE = 37.9")))) 
 
 dev.off()
-# embed_fonts("plots/Age.pdf", outfile="plots/Age.pdf")
+embed_fonts("plots/Age.pdf", outfile="plots/Age.pdf")
 
 ```
 
@@ -313,7 +313,7 @@ Code for creating the vignette
 ```{r createVignette, eval=FALSE}
 ## Create the vignette
 library('rmarkdown')
-system.time(render('/dcl01/leek/data/sellis/barcoding/phenotype_vignettes/phenopredict-Age.Rmd', output_format='html_document'))
+system.time(render('/dcl01/leek/data/sellis/barcoding/phenotype_vignettes/phenopredict-Age.Rmd', output_format='BiocStyle::html_document'))
 
 ## Extract the R code
 library('knitr')

@@ -16,8 +16,8 @@ startTime <- Sys.time()
 # Load libraries
 ```{r load-packages, message = FALSE, warning = FALSE}
 library(devtools)
-# install_github("leekgroup/phenopredict")
-document("/users/sellis/phenopredict")
+install_github("leekgroup/phenopredict")
+# document("/users/sellis/phenopredict")
 library('phenopredict')
 library('splines')
 library('GenomicRanges')
@@ -250,7 +250,7 @@ Code for creating the vignette
 ```{r createVignette, eval=FALSE}
 ## Create the vignette
 library('rmarkdown')
-system.time(render('/dcl01/leek/data/sellis/barcoding/phenotype_vignettes/phenopredict-Height.Rmd', output_format='html_document'))
+system.time(render('/dcl01/leek/data/sellis/barcoding/phenotype_vignettes/phenopredict-Height.Rmd', output_format='BiocStyle::html_document'))
 
 ## Extract the R code
 library('knitr')
