@@ -170,6 +170,10 @@ length(predictor$trainingProbes)
 # the number of rows corresponds to the number of sites used for prediction
 # while the columns corresponds to the number of categories of your phenotype.
 dim(predictor$coefEsts)
+
+#taking a look at mean expression across regions selected
+expression_sequencingstrategy <- apply(merge_input$covmat[predictor$trainingProbes,],1,mean,na.rm=T)
+summary(expression_sequencingstrategy)
 ```
 
 # Resubstitution Error (in SRA training data)
