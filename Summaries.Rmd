@@ -237,7 +237,7 @@ ggplot(as.data.frame(a), aes(x=predicted, y = Count)) +
 	scale_fill_manual("black")+
 	theme_bw()+
   	theme(plot.title = element_text(size=18,hjust = 0.5),text = element_text(size=16), panel.border = element_blank(), panel.grid.major = element_blank(),
-                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.5),axis.text=element_text(colour="black", size=16))
+                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.4,vjust=1),axis.text=element_text(colour="black", size=16))
 
  ## Sex breakdown within SRA
 (sex_SRA <- df %>% dplyr::filter(dataset=="sra") %>%  group_by(predicted_sex) %>% select(predicted_sex) %>% dplyr::summarise(Count = n())) 
@@ -259,7 +259,7 @@ ggplot(sens_sex, aes(x=category, y = value, fill=X2)) +
 	scale_fill_manual(values=c("#940CE8","#E8790C"))+
 	theme_bw()+
   	theme(legend.title=element_blank(), plot.title = element_text(size=16,hjust = 0.5),text = element_text(size=16), panel.border = element_blank(), panel.grid.major = element_blank(),
-                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.5),axis.text=element_text(colour="black", size=16))
+                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.4,vjust=1),axis.text=element_text(colour="black", size=16))
 
  print(xtable(xtab_sex), comment=F, type="html")
 
@@ -269,7 +269,7 @@ ggplot(sens_sex, aes(x=category, y = value, fill=X2)) +
 	scale_fill_manual(values=c("#FF6699", "#FFDE0D","#3A9EEA","#940CE8","#0CBD18","#DE2D26","#3BC4C7","#E8790C", "gray84"))+
 	theme_bw()+
   	theme(plot.title = element_text(size=18,hjust = 0.5),text = element_text(size=16), panel.border = element_blank(), panel.grid.major = element_blank(),
-            panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text=element_text(colour="black", size=16))
+            panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.4,vjust=1),axis.text=element_text(colour="black", size=16))
 
 
 	colors2 = c("#FF6699", "#FFDE0D","#3A9EEA","#940CE8","#0CBD18","#DE2D26","#3BC4C7","#E8790C", "gray84")
@@ -302,7 +302,7 @@ ggplot(sens_sex, aes(x=category, y = value, fill=X2)) +
 
 ggplot(data = as.data.frame(x2), aes(x=predicted, y=reported, fill=Freq)) + 
   geom_tile()+
-  theme(legend.title=element_blank(),text = element_text(size=14),plot.title = element_text(size=20,hjust = 0.5),axis.text.x=element_text(angle=90,hjust=0.5))+
+  theme(legend.title=element_blank(),text = element_text(size=14),plot.title = element_text(size=20,hjust = 0.5),axis.text.x=element_text(angle=90,hjust=0.4,vjust=1))+
   labs(title="Sex")
 
 
@@ -332,7 +332,7 @@ ggplot(as.data.frame(a), aes(x=predicted_tissue, y = Count)) +
 	scale_fill_manual("black")+
 	theme_bw()+
   	theme(plot.title = element_text(size=18,hjust = 0.5),text = element_text(size=16), panel.border = element_blank(), panel.grid.major = element_blank(),
-                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.5),axis.text=element_text(colour="black", size=16))
+                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.4,vjust=1),axis.text=element_text(colour="black", size=16))
 
 
 ## samples discordant or concordant for tissue
@@ -347,7 +347,7 @@ ggplot(as.data.frame(a), aes(x=predicted, y = n, fill=new)) +
 	scale_fill_manual(values=c("black","gray48"))+
 	theme_bw()+
   	theme(legend.title=element_blank(),plot.title = element_text(size=18,hjust = 0.5),text = element_text(size=16), panel.border = element_blank(), panel.grid.major = element_blank(),
-                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.5),axis.text=element_text(colour="black", size=16))
+                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.4,vjust=1),axis.text=element_text(colour="black", size=16))
 
 print(xtable(t(Vals_tissue)), comment=F, type="html")
 
@@ -357,7 +357,7 @@ ggplot(sens_tissue, aes(x=category, y = value, fill=X2)) +
 	scale_fill_manual(values=c("#940CE8","#E8790C"))+
 	theme_bw()+
   	theme(legend.title=element_blank(), plot.title = element_text(size=16,hjust = 0.5),text = element_text(size=16), panel.border = element_blank(), panel.grid.major = element_blank(),
-                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.5),axis.text=element_text(colour="black", size=16))
+                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.4,vjust=1),axis.text=element_text(colour="black", size=16))
 
 
 ## barplot colored by mismatch
@@ -368,7 +368,7 @@ b <- xtab_tissue[,dimnames(xtab_tissue)$reported %in% dimnames(xtab_tissue)$pred
 	scale_fill_manual(values=colors31)+
 	theme_bw()+
   	theme(plot.title = element_text(size=18,hjust = 0.5),text = element_text(size=12), panel.border = element_blank(), panel.grid.major = element_blank(),
-                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.5),axis.text=element_text(colour="black", size=12))
+                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.4,vjust=1),axis.text=element_text(colour="black", size=12))
 #
 # barplot colored by mismatch (proportion)
   		colors2 = colors31
@@ -411,7 +411,7 @@ dimnames(xtab_tissue_all)$reported[42] <- "Cutaneous or Subcutaneous Tissue"
 ## confusion matrix for all reported tissues, not just the ones we had the chance to get right
   ggplot(data = as.data.frame(xtab_tissue_all), aes(x=predicted, y=reported, fill=Freq)) + 
   geom_tile()+
-  theme(legend.title=element_blank(),text = element_text(size=14),plot.title = element_text(size=24,hjust = 0.5),axis.text.x=element_text(angle=90,hjust=0.5))+
+  theme(legend.title=element_blank(),text = element_text(size=14),plot.title = element_text(size=24,hjust = 0.5),axis.text.x=element_text(angle=90,hjust=0.4,vjust=1))+
   labs(title="Tissue")
 
 ```
@@ -438,7 +438,7 @@ ggplot(as.data.frame(a), aes(x=predicted, y = Count)) +
 	scale_fill_manual("black")+
 	theme_bw()+
   	theme(plot.title = element_text(size=18,hjust = 0.5),text = element_text(size=16), panel.border = element_blank(), panel.grid.major = element_blank(),
-                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.5),axis.text=element_text(colour="black", size=16))
+                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.4,vjust=1),axis.text=element_text(colour="black", size=16))
 
 print(xtable(t(Vals_sequencingstrategy)), comment=F, type="html")
 
@@ -448,7 +448,7 @@ ggplot(sens_sequencingstrategy, aes(x=category, y = value, fill=X2)) +
 	scale_fill_manual(values=c("#940CE8","#E8790C"))+
 	theme_bw()+
   	theme(legend.title=element_blank(), plot.title = element_text(size=16,hjust = 0.5),text = element_text(size=16), panel.border = element_blank(), panel.grid.major = element_blank(),
-                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.5),axis.text=element_text(colour="black", size=16))
+                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.4,vjust=1),axis.text=element_text(colour="black", size=16))
 
 print(xtable(xtab_sequencingstrategy), comment=F, type="html")
 
@@ -517,7 +517,7 @@ ggplot(as.data.frame(a), aes(x=predicted, y = Count)) +
 	scale_fill_manual("black")+
 	theme_bw()+
   	theme(plot.title = element_text(size=18,hjust = 0.5),text = element_text(size=16), panel.border = element_blank(), panel.grid.major = element_blank(),
-                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.5),axis.text=element_text(colour="black", size=16))
+                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.4,vjust=1),axis.text=element_text(colour="black", size=16))
 
  print(xtable(t(Vals_samplesource)), comment=F, type="html")
 
@@ -528,7 +528,7 @@ ggplot(sens_samplesource, aes(x=category, y = value, fill=X2)) +
 	scale_fill_manual(values=c("#940CE8","#E8790C"))+
 	theme_bw()+
   	theme(legend.title=element_blank(), plot.title = element_text(size=16,hjust = 0.5),text = element_text(size=16), panel.border = element_blank(), panel.grid.major = element_blank(),
-                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.5),axis.text=element_text(colour="black", size=16))
+                   panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"),axis.text.x=element_text(angle=90,hjust=0.4,vjust=1),axis.text=element_text(colour="black", size=16))
 
 print(xtable(xtab_samplesource), comment=F, type="html")
 
@@ -568,7 +568,7 @@ print(xtable(xtab_samplesource), comment=F, type="html")
 
 ggplot(data = as.data.frame(x3), aes(x=predicted, y=reported, fill=Freq)) + 
   geom_tile()+
-  theme(legend.title=element_blank(),text = element_text(size=14),plot.title = element_text(size=20,hjust = 0.5),axis.text.x=element_text(angle=90,hjust=0.5))+
+  theme(legend.title=element_blank(),text = element_text(size=14),plot.title = element_text(size=20,hjust = 0.5),axis.text.x=element_text(angle=90,hjust=0.4,vjust=1))+
   labs(title="Sample Source")
 
 ```
