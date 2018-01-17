@@ -645,6 +645,7 @@ barplot(as.numeric(mat["percent_correct",])*100, names.arg=c("SRA: training","SR
         main="Sample Source", ylim=c(0,100), ylab="Accuracy", xlab="Data Set Used", col=colours2, cex.lab=1.3, cex.axis=1.2, cex.main=1.4)
 axis(1, at=c(0,5), xpd=T, lwd.ticks = 0, labels=F)
 # dev.off()
+# embed_fonts("/dcl01/leek/data/sellis/barcoding/plots/SampleSourcePrediction.pdf",outfile="/dcl01/leek/data/sellis/barcoding/plots/SampleSourcePrediction.pdf")
 
 ```
 
